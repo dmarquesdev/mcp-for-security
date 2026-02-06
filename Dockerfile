@@ -1,9 +1,7 @@
-FROM golang:1.24-bullseye AS golang
+FROM golang:1.25-bookworm AS golang
 
 # Set working directory
 WORKDIR /app
-
-
 
 # Install Python, pip, Go, virtualenv, and other tools
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -15,14 +13,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     masscan \
     nmap \
-    ruby-full && \
+    ruby-full \
+    bsdmainutils \
+    dnsutils \
+    procps && \
     apt-get clean && rm -rf /var/lib/apt/lists/* && \
     git clone https://github.com/sqlmapproject/sqlmap /opt/sqlmap && \
     ln -s /opt/sqlmap/sqlmap.py /usr/local/bin/sqlmap && \
-    chmod +x /usr/local/bin/sqlmap
+    chmod +x /usr/local/bin/sqlmap && \
+    git clone --depth 1 https://github.com/danielmiessler/SecLists.git /opt/seclists
 
 
-    RUN curl -fsSL https://deb.nodesource.com/setup_24.x | bash - && \
+    RUN curl -fsSL https://deb.nodesource.com/setup_25.x | bash - && \
     apt-get install -y nodejs && \
     if ! command -v npm >/dev/null 2>&1; then \
         echo "[*] npm not found, installing manually..."; \

@@ -65,10 +65,12 @@ Since each MCP server may require different dependencies, the `start.sh` bash sc
 | Nuclei | Vulnerability scanner using custom templates | [Nuclei MCP Documentation](./nuclei-mcp/) |
 | Scout Suite | Cloud security auditing tool for assessing configurations across multiple services | [Scout Suite MCP Documentation](./scoutsuite-mcp/) |
 | SSLScan | SSL/TLS configuration analyzer for security assessment | [SSLScan MCP Documentation](./sslscan-mcp/) |
+| testssl.sh | Comprehensive TLS/SSL testing tool for protocols, ciphers, vulnerabilities, and certificates | [testssl MCP Documentation](./testssl-mcp/) |
 | shuffledns | High-speed and customizable DNS brute-forcing and resolution tool | [shuffledns MCP Documentation](./shuffledns-mcp) |
 | Smuggler | Advanced tool for detecting HTTP Request Smuggling vulnerabilities | [Smuggler MCP Documentation](./smuggler-mcp) |
 | SQLmap | Advanced SQL injection detection and exploitation tool | [SQLmap MCP Documentation](./sqlmap-mcp/) |
 | Waybackurls | Tool for retrieving historical URLs from the Wayback Machine | [Waybackurls MCP Documentation](./waybackurls-mcp/) |
+| SecLists | Security tester's wordlist collection — browse, search, and retrieve wordlists for use with other tools | [SecLists MCP Documentation](./seclists-mcp/) |
 | WPScan | WordPress vulnerability scanner for detecting plugins, themes, and configuration issues | [WPScan MCP Documentation](./wpscan-mcp/) |
 
 ## Quick Reference
@@ -130,10 +132,16 @@ HTTP Request Smuggling detection tool that identifies desynchronization vulnerab
 ### SQLmap MCP Server  
 SQL injection testing tool with comprehensive capabilities for vulnerability discovery.
 
-### SSLScan MCP Server  
+### SSLScan MCP Server
 SSL/TLS configuration analyzer for identifying weak ciphers and security misconfigurations.
 
-### Waybackurls MCP  
+### testssl MCP Server
+Comprehensive TLS/SSL testing tool that checks protocols (SSLv2–TLS 1.3), cipher suites, vulnerabilities (Heartbleed, POODLE, DROWN, FREAK, and more), server defaults, certificates, and HTTP security headers. Supports targeted scans, batch scanning, and multiple output formats.
+
+### SecLists MCP
+Provides access to the SecLists wordlist collection — browse categories, search for wordlists by name, retrieve file paths for use with tools like ffuf and gobuster, and read wordlist contents directly.
+
+### Waybackurls MCP
 Retrieves historical URLs from the Wayback Machine to discover forgotten endpoints.
 
 ### WPScan MCP  
