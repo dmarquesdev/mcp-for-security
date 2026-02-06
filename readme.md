@@ -55,6 +55,7 @@ Since each MCP server may require different dependencies, the `start.sh` bash sc
 | Cero | Certificate-based subdomain enumeration tool leveraging TLS handshakes to extract domain names from certificate fields like SAN | [Cero MCP Documentation](./cero-mcp) |
 | Certificate Search (crt.sh) | Subdomain discovery tool using SSL certificate logs | [Certificate Search MCP Documentation](./crtsh-mcp/) |
 | FFUF | Web content fuzzing tool for discovering hidden files and directories | [FFUF MCP Documentation](./ffuf-mcp/) |
+| GitHub Subdomains | Subdomain discovery tool that searches GitHub code using the GitHub API | [GitHub Subdomains MCP Documentation](./github-subdomains-mcp/) |
 | Gowitness | Web screenshot and reconnaissance tool for capturing and analyzing web pages | [Gowitness MCP Documentation](./gowitness-mcp/) |
 | HTTP Headers Security | Analyzer for HTTP security headers against OWASP standards | [HTTP Headers MCP Documentation](./http-headers-security-mcp/) |
 | httpx | Fast and multi-purpose HTTP toolkit for port scanning. | [httpx MCP Documentation](./httpx-mcp) |
@@ -97,7 +98,10 @@ Discovers subdomains by querying SSL certificate transparency logs without activ
 ### FFUF MCP Server  
 URL-based fuzzing tool with support for all FFUF command line arguments.
 
-### Gowitness MCP Server  
+### GitHub Subdomains MCP
+Discovers subdomains by searching GitHub code using the GitHub API. Requires a GitHub personal access token for authentication.
+
+### Gowitness MCP Server
 Web screenshot and reconnaissance tool that captures screenshots of web pages, analyzes HTTP responses, and provides visual reconnaissance capabilities for security assessments and web application testing.
 
 ### HTTP Headers Security MCP  
@@ -163,7 +167,6 @@ WordPress vulnerability scanner for detecting outdated plugins, themes, and comm
 - gau
 - getJS
 - github-endpoints
-- github-subdomains
 - gospider
 - hakrawler
 - kiterunner

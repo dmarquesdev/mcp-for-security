@@ -114,6 +114,8 @@ Every server in `src/index.ts`:
 4. Implement `src/index.ts` following the spawn/pty/API pattern appropriate for the tool
 5. Create `build.sh` that installs the tool, runs `npm install && npm run build`, and updates `mcp-config.json`
 6. Add entry to root `readme.md` tools table
+7. Add the `.gitignore` file to make sure bloated files are not commited.
+8. Create the MCP server `readme.md` file describing it's usage and setup.
 
 ## Requirements
-Use context7 to look for documentation
+Use context7 for documentation
