@@ -67,6 +67,7 @@ Since each MCP server may require different dependencies, the `start.sh` bash sc
 | SSLScan | SSL/TLS configuration analyzer for security assessment | [SSLScan MCP Documentation](./sslscan-mcp/) |
 | testssl.sh | Comprehensive TLS/SSL testing tool for protocols, ciphers, vulnerabilities, and certificates | [testssl MCP Documentation](./testssl-mcp/) |
 | shuffledns | High-speed and customizable DNS brute-forcing and resolution tool | [shuffledns MCP Documentation](./shuffledns-mcp) |
+| Subfinder | Fast passive subdomain enumeration tool for discovering valid subdomains | [Subfinder MCP Documentation](./subfinder-mcp/) |
 | Smuggler | Advanced tool for detecting HTTP Request Smuggling vulnerabilities | [Smuggler MCP Documentation](./smuggler-mcp) |
 | SQLmap | Advanced SQL injection detection and exploitation tool | [SQLmap MCP Documentation](./sqlmap-mcp/) |
 | Waybackurls | Tool for retrieving historical URLs from the Wayback Machine | [Waybackurls MCP Documentation](./waybackurls-mcp/) |
@@ -123,8 +124,11 @@ Template-based vulnerability scanner with an extensive library of security check
 ### Scout Suite MCP Server 
 Performs a multi-service cloud security audit by analyzing cloud configurations and highlighting potential misconfigurations and risks based on best practices.
 
-### shuffledns MCP  
+### shuffledns MCP
 High-speed DNS brute-forcing and mass subdomain resolution tool to quickly discover valid subdomains using custom resolvers and wordlists.
+
+### Subfinder MCP
+Fast passive subdomain enumeration tool that discovers valid subdomains for websites using online passive sources without active probing.
 
 ### smuggler MCP  
 HTTP Request Smuggling detection tool that identifies desynchronization vulnerabilities between front-end and back-end servers.
@@ -160,7 +164,6 @@ WordPress vulnerability scanner for detecting outdated plugins, themes, and comm
 - getJS
 - github-endpoints
 - github-subdomains
-- gobuster
 - gospider
 - hakrawler
 - kiterunner
