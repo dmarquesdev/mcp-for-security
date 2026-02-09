@@ -1,7 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { spawn } from 'child_process';
+import { secureSpawn, startServer } from "mcp-shared";
 
 const args = process.argv.slice(2);
 if (args.length === 0) {
@@ -46,7 +45,7 @@ server.tool(
             Default behavior if not specified: vp,vt,tt,cb,dbe,u,m
             `),
     },
-    async ({ url,detection_mode,random_user_agent,max_threads,disable_tls_checks,proxy,cookies,force,enumerate }) => {
+    async ({ url, detection_mode, random_user_agent, max_threads, disable_tls_checks, proxy, cookies, force, enumerate }) => {
         const wpscanArgs = ['-u', url];
 
         // Add detection mode if specified
@@ -89,47 +88,29 @@ server.tool(
             wpscanArgs.push('-e', enumerate.join(','));
         }
 
+        const result = await secureSpawn(args[0], wpscanArgs);
 
-        const wpscan = spawn(args[0], wpscanArgs);
-        let output = '';
+        if (result.exitCode !== 0) {
+            return {
+                content: [{
+                    type: "text" as const,
+                    text: `wpscan exited with code ${result.exitCode}\n${result.stderr}`
+                }]
+            };
+        }
 
-        // Handle stdout
-        wpscan.stdout.on('data', (data) => {
-            output += data.toString();
-        });
-
-        // Handle stderr
-        wpscan.stderr.on('data', (data) => {
-            output += data.toString();
-        });
-
-        // Handle process completion
-        return new Promise((resolve, reject) => {
-            wpscan.on('close', (code) => {
-                if (code === 0) {
-                    resolve({
-                        content: [{
-                            type: "text",
-                            text: output + "\n wpscan completed successfully"
-                        }]
-                    });
-                } else {
-                    reject(new Error(`wpscan exited with code ${code}`));
-                }
-            });
-
-            wpscan.on('error', (error) => {
-                reject(new Error(`Failed to start wpscan: ${error.message}`));
-            });
-        });
+        return {
+            content: [{
+                type: "text" as const,
+                text: result.stdout + result.stderr + "\n wpscan completed successfully"
+            }]
+        };
     },
 );
 
 // Start the server
 async function main() {
-    const transport = new StdioServerTransport();
-    await server.connect(transport);
-    console.error("wpscan MCP Server running on stdio");
+    await startServer(server);
 }
 
 main().catch((error) => {

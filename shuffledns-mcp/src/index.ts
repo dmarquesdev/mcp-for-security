@@ -1,7 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-const pty = require('node-pty');
+import { secureSpawn, startServer } from "mcp-shared";
 
 const args = process.argv.slice(2);
 if (args.length < 2) {
@@ -26,57 +25,30 @@ server.tool(
         rateLimit: z.number().optional().describe("ratelimit")
     },
     async ({ target, resolver, mode, wordlist, rateLimit }) => {
-        const shufflednsArgs = ["-d", target, "-r", resolver, "-mode", mode, "-w", wordlist, "-m", args[1],"-silent"];
+        const shufflednsArgs = ["-d", target, "-r", resolver, "-mode", mode, "-w", wordlist, "-m", args[1], "-silent"];
         if (rateLimit) {
             shufflednsArgs.push("-t", rateLimit.toString());
         }
-        let output = '';
-        const shuffledns = pty.spawn(args[0], shufflednsArgs, {
-            name: 'xterm-color',
-            cols: 80,
-            rows: 30,
-            cwd: process.cwd(),
-            env: process.env
-        });
 
-        shuffledns.on('data', function (data: string) {
-            output += data.toString();
-        });
+        const result = await secureSpawn(args[0], shufflednsArgs);
 
-        // Handle process completion
-        return new Promise((resolve, reject) => {
-            shuffledns.on('close', function (code: number) {
-                if (code === 0 || typeof code === "undefined") {
-                    output = removeAnsiCodes(output)
-                    const resolveData: any = {
-                        content: [{
-                            type: "text",
-                            text: output
-                        }]
-                    };
-                    resolve(resolveData);
-                } else {
-                    reject(new Error(`shuffledns exited with code ${code}`));
-                }
-            });
-            shuffledns.on('error', function (error: Error) {
-                if (typeof error.cause !== "undefined") {
-                    reject(new Error(`Error to start shuffledns: ${error.cause}`));
-                }
-            });
-        });
+        if (result.exitCode !== 0) {
+            throw new Error(`shuffledns exited with code ${result.exitCode}:\n${result.stderr}`);
+        }
+
+        return {
+            content: [{
+                type: "text" as const,
+                text: result.stdout
+            }]
+        };
     },
 );
 
-function removeAnsiCodes(input: string): string {
-    return input.replace(/\x1B\[[0-9;]*m/g, '');
-}
-
 // Start the server
 async function main() {
-    const transport = new StdioServerTransport();
-    await server.connect(transport);
-    console.error("shuffledns MCP Server running on stdio");
+    await startServer(server);
+    console.error("shuffledns MCP Server running");
 }
 
 main().catch((error) => {

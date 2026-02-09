@@ -1,9 +1,8 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { spawn } from "child_process";
 import { existsSync, statSync } from "fs";
 import { join } from "path";
+import { secureSpawn, removeAnsiCodes, sanitizePath, startServer } from "mcp-shared";
 
 const args = process.argv.slice(2);
 if (args.length === 0) {
@@ -25,40 +24,20 @@ const server = new McpServer({
     version: "1.0.0",
 });
 
-function removeAnsiCodes(input: string): string {
-    return input.replace(/\x1B\[[0-9;]*[mGK]/g, '');
-}
-
-function runTestssl(testsslArgs: string[], target?: string): Promise<{ content: { type: "text"; text: string }[] }> {
+async function runTestssl(testsslArgs: string[], target?: string): Promise<{ content: { type: "text"; text: string }[] }> {
     const finalArgs = ["--color", "0", ...testsslArgs];
     if (target) finalArgs.push(target);
-    const proc = spawn(testsslPath, finalArgs);
-    let output = "";
 
-    proc.stdout.on("data", (data) => {
-        output += data.toString();
-    });
+    const result = await secureSpawn(testsslPath, finalArgs);
+    const output = removeAnsiCodes(result.stdout + result.stderr);
 
-    proc.stderr.on("data", (data) => {
-        output += data.toString();
-    });
-
-    return new Promise((resolve, reject) => {
-        proc.on("close", (code) => {
-            output = removeAnsiCodes(output);
-            if (code === 0 || code === null) {
-                resolve({
-                    content: [{ type: "text", text: output || "testssl completed with no output" }],
-                });
-            } else {
-                reject(new Error(`testssl exited with code ${code}: ${output}`));
-            }
-        });
-
-        proc.on("error", (error) => {
-            reject(new Error(`Failed to start testssl: ${error.message}`));
-        });
-    });
+    if (result.exitCode === 0) {
+        return {
+            content: [{ type: "text", text: output || "testssl completed with no output" }],
+        };
+    } else {
+        throw new Error(`testssl exited with code ${result.exitCode}: ${output}`);
+    }
 }
 
 // Shared option interfaces and arg builders
@@ -111,13 +90,14 @@ function addConnectionArgs(a: string[], p: ConnectionParams): void {
 }
 
 function addOutputArgs(a: string[], p: OutputParams): void {
+    const cwd = process.cwd();
     if (p.quiet) a.push("-q");
     if (p.wide) a.push("--wide");
-    if (p.jsonfile) a.push("--jsonfile", p.jsonfile);
-    if (p.jsonfile_pretty) a.push("--jsonfile-pretty", p.jsonfile_pretty);
-    if (p.csvfile) a.push("--csvfile", p.csvfile);
-    if (p.htmlfile) a.push("--htmlfile", p.htmlfile);
-    if (p.logfile) a.push("--logfile", p.logfile);
+    if (p.jsonfile) a.push("--jsonfile", sanitizePath(p.jsonfile, cwd));
+    if (p.jsonfile_pretty) a.push("--jsonfile-pretty", sanitizePath(p.jsonfile_pretty, cwd));
+    if (p.csvfile) a.push("--csvfile", sanitizePath(p.csvfile, cwd));
+    if (p.htmlfile) a.push("--htmlfile", sanitizePath(p.htmlfile, cwd));
+    if (p.logfile) a.push("--logfile", sanitizePath(p.logfile, cwd));
     if (p.severity) a.push("--severity", p.severity);
     if (p.append) a.push("--append");
     if (p.overwrite) a.push("--overwrite");
@@ -323,7 +303,9 @@ server.tool(
         ...outputSchema,
     },
     async (params) => {
-        const a: string[] = ["--file", params.file_path];
+        // Validate file_path stays within cwd
+        const safeFilePath = sanitizePath(params.file_path, process.cwd());
+        const a: string[] = ["--file", safeFilePath];
 
         if (params.mode === "serial") a.push("--serial");
         if (params.mode === "parallel") a.push("--parallel");
@@ -342,9 +324,8 @@ server.tool(
 );
 
 async function main() {
-    const transport = new StdioServerTransport();
-    await server.connect(transport);
-    console.error("testssl MCP Server running on stdio");
+    await startServer(server);
+    console.error("testssl MCP Server running");
 }
 
 main().catch((error) => {

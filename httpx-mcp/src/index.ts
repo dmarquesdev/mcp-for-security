@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-const pty = require('node-pty');
+import { secureSpawn, startServer } from "mcp-shared";
+
 const args = process.argv.slice(2);
 if (args.length === 0) {
     console.error("Usage: httpx-mcp <httpx binary>");
@@ -45,8 +45,6 @@ server.tool(
             probe            Display probe status`)
     },
     async ({ target, ports, probes }) => {
-
-
         const httpxArgs = ["-u", target.join(","), "-silent"];
 
         if (ports && ports.length > 0) {
@@ -59,55 +57,25 @@ server.tool(
             }
         }
 
-        let output = '';
+        const result = await secureSpawn(args[0], httpxArgs);
 
+        if (result.exitCode !== 0) {
+            throw new Error(`httpx exited with code ${result.exitCode}:\n${result.stderr}`);
+        }
 
-        const httpx = pty.spawn(args[0], httpxArgs, {
-            name: 'xterm-color',
-            cols: 80,
-            rows: 30,
-            cwd: process.cwd(),
-            env: process.env
-        });
-
-        httpx.on('data', function (data: string) {
-            output += data.toString();
-        });
-
-        // Handle process completion
-        return new Promise((resolve, reject) => {
-            httpx.on('close', function (code: number) {
-                if (code === 0 || typeof code === "undefined") {
-                    output = removeAnsiCodes(output)
-                    const resolveData: any = {
-                        content: [{
-                            type: "text",
-                            text: output
-                        }]
-                    };
-                    resolve(resolveData);
-                } else {
-                    reject(new Error(`httpx exited with code ${code}`));
-                }
-            });
-            httpx.on('error', function (error: Error) {
-                if (typeof error.cause !== "undefined") {
-                    reject(new Error(`Error to start httpx: ${error.cause}`));
-                }
-            });
-        });
+        return {
+            content: [{
+                type: "text" as const,
+                text: result.stdout
+            }]
+        };
     },
 );
 
-function removeAnsiCodes(input: string): string {
-    return input.replace(/\x1B\[[0-9;]*m/g, '');
-}
-
 // Start the server
 async function main() {
-    const transport = new StdioServerTransport();
-    await server.connect(transport);
-    console.error("httpx MCP Server running on stdio");
+    await startServer(server);
+    console.error("httpx MCP Server running");
 }
 
 main().catch((error) => {

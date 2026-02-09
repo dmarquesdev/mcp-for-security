@@ -1,7 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { spawn } from 'child_process';
+import { secureSpawn, startServer } from "mcp-shared";
 
 const args = process.argv.slice(2);
 if (args.length === 0) {
@@ -34,7 +33,6 @@ server.tool(
 
     },
     async ({ subcommand, domain, intel_whois, intel_organization, enum_type, enum_brute, enum_brute_wordlist }) => {
-        const amassCommand = "amass";
         let amassArgs: string[] = [subcommand];
 
         // Handle different subcommands
@@ -88,50 +86,31 @@ server.tool(
 
         }
 
-        console.log(`Executing: amass ${amassArgs.join(' ')}`);
+        console.error(`Executing: amass ${amassArgs.join(' ')}`);
 
-        const amass = spawn(amassCommand, amassArgs);
-        let output = '';
+        const result = await secureSpawn(args[0], amassArgs);
 
-        // Handle stdout
-        amass.stdout.on('data', (data) => {
-            const chunk = data.toString();
-            output += chunk;
-        });
+        if (result.exitCode !== 0) {
+            return {
+                content: [{
+                    type: "text" as const,
+                    text: `Amass exited with code ${result.exitCode}. Output: ${result.stdout}${result.stderr}. Args:${amassArgs}`
+                }]
+            };
+        }
 
-        // Handle stderr
-        amass.stderr.on('data', (data) => {
-            const chunk = data.toString();
-            output += chunk;
-        });
-
-        // Handle process completion
-        return new Promise((resolve, reject) => {
-            amass.on('close', (code) => {
-                if (code === 0) {
-                    resolve({
-                        content: [{
-                            type: "text",
-                            text: output
-                        }]
-                    });
-                } else {
-                    reject(new Error(`Amass exited with code ${code}. Output: ${output}. Args:${amassArgs}`));
-                }
-            });
-
-            amass.on('error', (error) => {
-                reject(new Error(`Failed to start Amass: ${error.message}`));
-            });
-        });
+        return {
+            content: [{
+                type: "text" as const,
+                text: result.stdout
+            }]
+        };
     },
 );
 
 // Start the server
 async function main() {
-    const transport = new StdioServerTransport();
-    await server.connect(transport);
-    console.error("AMASS MCP Server running on stdio");
+    await startServer(server);
 }
 
 main().catch((error) => {

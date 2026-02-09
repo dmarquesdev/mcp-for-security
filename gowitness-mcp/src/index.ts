@@ -1,9 +1,8 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { spawn } from "child_process";
 import { readFile, access, readdir, writeFile, unlink, stat } from "fs/promises";
-import { join } from "path";
+import { join, resolve } from "path";
+import { secureSpawn, sanitizePath, startServer } from "mcp-shared";
 
 // Get gowitness binary path
 const args = process.argv.slice(2);
@@ -39,143 +38,98 @@ server.tool(
         write_jsonl: z.boolean().optional().describe("Write results as JSON lines"),
         user_agent: z.string().optional().describe("Custom user-agent string")
     },
-    async ({ 
-        url, 
-        chrome_window_x, 
-        chrome_window_y, 
-        screenshot_path, 
-        return_binary = false, 
-        timeout, 
-        delay, 
-        fullpage, 
-        format, 
-        threads, 
-        write_db, 
+    async ({
+        url,
+        chrome_window_x,
+        chrome_window_y,
+        screenshot_path,
+        return_binary = false,
+        timeout,
+        delay,
+        fullpage,
+        format,
+        threads,
+        write_db,
         write_jsonl,
         user_agent
-    }: {
-        url: string;
-        chrome_window_x?: number;
-        chrome_window_y?: number;
-        screenshot_path?: string;
-        return_binary?: boolean;
-        timeout?: number;
-        delay?: number;
-        fullpage?: boolean;
-        format?: "jpeg" | "png";
-        threads?: number;
-        write_db?: boolean;
-        write_jsonl?: boolean;
-        user_agent?: string;
     }) => {
-        const args = ["scan", "single", "--url", url];
+        const spawnArgs = ["scan", "single", "--url", url];
 
-        // Add gowitness-specific parameters
-        if (chrome_window_x) args.push("--chrome-window-x", chrome_window_x.toString());
-        if (chrome_window_y) args.push("--chrome-window-y", chrome_window_y.toString());
-        if (screenshot_path) args.push("--screenshot-path", screenshot_path);
-        if (timeout) args.push("--timeout", timeout.toString());
-        if (delay) args.push("--delay", delay.toString());
-        if (fullpage) args.push("--screenshot-fullpage");
-        if (format) args.push("--screenshot-format", format);
-        if (threads) args.push("--threads", threads.toString());
-        if (write_db) args.push("--write-db");
-        if (write_jsonl) args.push("--write-jsonl");
-        if (user_agent) args.push("--chrome-user-agent", user_agent);
-        
-        // Add default writer to avoid warnings if none specified
+        if (chrome_window_x) spawnArgs.push("--chrome-window-x", chrome_window_x.toString());
+        if (chrome_window_y) spawnArgs.push("--chrome-window-y", chrome_window_y.toString());
+        if (screenshot_path) spawnArgs.push("--screenshot-path", screenshot_path);
+        if (timeout) spawnArgs.push("--timeout", timeout.toString());
+        if (delay) spawnArgs.push("--delay", delay.toString());
+        if (fullpage) spawnArgs.push("--screenshot-fullpage");
+        if (format) spawnArgs.push("--screenshot-format", format);
+        if (threads) spawnArgs.push("--threads", threads.toString());
+        if (write_db) spawnArgs.push("--write-db");
+        if (write_jsonl) spawnArgs.push("--write-jsonl");
+        if (user_agent) spawnArgs.push("--chrome-user-agent", user_agent);
+
         if (!write_db && !write_jsonl) {
-            args.push("--write-none");
+            spawnArgs.push("--write-none");
         }
 
-        const proc = spawn(gowitnessPath, args);
-        let output = "";
+        const result = await secureSpawn(gowitnessPath, spawnArgs);
+        const output = result.stdout + result.stderr;
 
-        proc.stdout.on("data", (data) => {
-            output += data.toString();
-        });
+        if (result.exitCode !== 0) {
+            throw new Error(`gowitness exited with code ${result.exitCode}:\n${output}`);
+        }
 
-        proc.stderr.on("data", (data) => {
-            output += data.toString();
-        });
+        if (return_binary) {
+            const screenshotDir = screenshot_path || "./screenshots";
+            const files = await readdir(screenshotDir);
 
-        return new Promise(async (resolve, reject) => {
-            proc.on("close", async (code) => {
-                if (code === 0) {
-                if (return_binary) {
-                    try {
-                        // gowitness creates files in the screenshot path directory
-                        const screenshotDir = screenshot_path || "./screenshots";
-                        const files = await readdir(screenshotDir);
-                        
-                        // First try to find exact match with hostname
-                        let screenshotFile = files.find(file => 
-                            (file.endsWith('.jpeg') || file.endsWith('.png') || file.endsWith('.jpg')) && 
-                            file.includes(getHostnameFromUrl(url))
-                        );
-                        
-                        // If not found, try partial domain matching
-                        if (!screenshotFile) {
-                            const hostname = getHostnameFromUrl(url);
-                            const domainParts = hostname.split('_').filter(part => part.length > 0);
-                            
-                            screenshotFile = files.find(file => 
-                                (file.endsWith('.jpeg') || file.endsWith('.png') || file.endsWith('.jpg')) && 
-                                domainParts.some(part => file.includes(part))
-                            );
-                        }
-                        
-                        // If still not found, take the most recently created screenshot
-                        if (!screenshotFile) {
-                            const imageFiles = files.filter(file => 
-                                file.endsWith('.jpeg') || file.endsWith('.png') || file.endsWith('.jpg')
-                            );
-                            
-                            if (imageFiles.length > 0) {
-                                // Sort by creation time and take the most recent one
-                                screenshotFile = imageFiles[imageFiles.length - 1];
-                            }
-                        }
-                        
-                        if (!screenshotFile) {
-                            reject(new Error("Screenshot file not found after gowitness execution"));
-                            return;
-                        }
+            let screenshotFile = files.find(file =>
+                (file.endsWith('.jpeg') || file.endsWith('.png') || file.endsWith('.jpg')) &&
+                file.includes(getHostnameFromUrl(url))
+            );
 
-                        const screenshotPath = join(screenshotDir, screenshotFile);
-                        
-                        // Read the binary data
-                        const binaryData = await readFile(screenshotPath);
-                        
-                        resolve({
-                            content: [{
-                                type: "text",
-                                text: `Screenshot captured successfully. Binary data size: ${binaryData.length} bytes. Binary data: ${binaryData.toString('base64')} `, 
-                                
-                            }],
-                            // Include binary data as base64 encoded string for transport
-                        });
-                    } catch (error) {
-                        reject(new Error(`Failed to read screenshot file: ${error instanceof Error ? error.message : String(error)}`));
-                        }
-                } else {
-                    resolve({
-                        content: [{
-                            type: "text",
-                            text: output + "\nGowitness screenshot completed successfully" + 
-                                  (screenshot_path ? ` Screenshots saved to: ${screenshot_path}` : " Screenshots saved to: ./screenshots")
-                        }]
-                    });
+            if (!screenshotFile) {
+                const hostname = getHostnameFromUrl(url);
+                const domainParts = hostname.split('_').filter(part => part.length > 0);
+
+                screenshotFile = files.find(file =>
+                    (file.endsWith('.jpeg') || file.endsWith('.png') || file.endsWith('.jpg')) &&
+                    domainParts.some(part => file.includes(part))
+                );
+            }
+
+            if (!screenshotFile) {
+                const imageFiles = files.filter(file =>
+                    file.endsWith('.jpeg') || file.endsWith('.png') || file.endsWith('.jpg')
+                );
+
+                if (imageFiles.length > 0) {
+                    screenshotFile = imageFiles[imageFiles.length - 1];
                 }
-                } else {
-                    reject(new Error(`gowitness exited with code ${code}:\n${output}`));
-                }
-            });
+            }
 
-            proc.on("error", (error) => {
-                reject(new Error(`Failed to start gowitness: ${error.message}`));
-            });
-        });
+            if (!screenshotFile) {
+                throw new Error("Screenshot file not found after gowitness execution");
+            }
+
+            // Validate the resolved path stays within screenshotDir
+            const safePath = sanitizePath(screenshotFile, resolve(screenshotDir));
+            const binaryData = await readFile(safePath);
+
+            return {
+                content: [{
+                    type: "text" as const,
+                    text: `Screenshot captured successfully. Binary data size: ${binaryData.length} bytes. Binary data: ${binaryData.toString('base64')} `,
+                }],
+            };
+        } else {
+            return {
+                content: [{
+                    type: "text" as const,
+                    text: output + "\nGowitness screenshot completed successfully" +
+                          (screenshot_path ? ` Screenshots saved to: ${screenshot_path}` : " Screenshots saved to: ./screenshots")
+                }]
+            };
+        }
     }
 );
 
@@ -188,48 +142,25 @@ server.tool(
         db_uri: z.string().optional().describe("Database URI to generate report from (e.g., sqlite://gowitness.sqlite3)"),
         output_format: z.enum(["html", "csv", "json"]).optional().describe("Report output format"),
     },
-    async ({ screenshot_path, db_uri, output_format = "html" }: {
-        screenshot_path?: string;
-        db_uri?: string;
-        output_format?: "html" | "csv" | "json";
-    }) => {
-        const args = ["report"];
-        
-        if (screenshot_path) args.push("--screenshot-path", screenshot_path);
-        if (db_uri) args.push("--write-db-uri", db_uri);
-        
-        // Note: gowitness report command may have different syntax
-        // This is a basic implementation - you may need to adjust based on actual gowitness report options
+    async ({ screenshot_path, db_uri, output_format = "html" }) => {
+        const spawnArgs = ["report"];
 
-        const proc = spawn(gowitnessPath, args);
-        let output = "";
+        if (screenshot_path) spawnArgs.push("--screenshot-path", screenshot_path);
+        if (db_uri) spawnArgs.push("--write-db-uri", db_uri);
 
-        proc.stdout.on("data", (data) => {
-            output += data.toString();
-        });
+        const result = await secureSpawn(gowitnessPath, spawnArgs);
+        const output = result.stdout + result.stderr;
 
-        proc.stderr.on("data", (data) => {
-            output += data.toString();
-        });
+        if (result.exitCode !== 0) {
+            throw new Error(`gowitness exited with code ${result.exitCode}:\n${output}`);
+        }
 
-        return new Promise((resolve, reject) => {
-            proc.on("close", (code) => {
-                if (code === 0) {
-                    resolve({
-                        content: [{
-                            type: "text",
-                            text: output + `\nGowitness report generated successfully`
-                        }]
-                    });
-                } else {
-                    reject(new Error(`gowitness exited with code ${code}:\n${output}`));
-                }
-            });
-
-            proc.on("error", (error) => {
-                reject(new Error(`Failed to start gowitness: ${error.message}`));
-            });
-        });
+        return {
+            content: [{
+                type: "text" as const,
+                text: output + `\nGowitness report generated successfully`
+            }]
+        };
     }
 );
 
@@ -249,93 +180,60 @@ server.tool(
         write_db: z.boolean().optional().describe("Write results to SQLite database"),
         write_jsonl: z.boolean().optional().describe("Write results as JSON lines")
     },
-    async ({ 
-        urls, 
-        screenshot_path, 
-        chrome_window_x, 
-        chrome_window_y, 
-        timeout, 
-        delay, 
-        threads, 
-        format, 
-        write_db, 
-        write_jsonl 
-    }: {
-        urls: string[];
-        screenshot_path: string;
-        chrome_window_x?: number;
-        chrome_window_y?: number;
-        timeout?: number;
-        delay?: number;
-        threads?: number;
-        format?: "jpeg" | "png";
-        write_db?: boolean;
-        write_jsonl?: boolean;
+    async ({
+        urls,
+        screenshot_path,
+        chrome_window_x,
+        chrome_window_y,
+        timeout,
+        delay,
+        threads,
+        format,
+        write_db,
+        write_jsonl
     }) => {
-        // Create a temporary URLs file
-        const urlsFile = join(screenshot_path, 'urls.txt');
+        // Validate screenshot_path is not a traversal path
+        const safeScreenshotPath = sanitizePath(screenshot_path, process.cwd());
+
+        const urlsFile = join(safeScreenshotPath, 'urls.txt');
         const urlsContent = urls.join('\n');
-        
+
         try {
-            // Write URLs to file
             await writeFile(urlsFile, urlsContent);
-            
-            const args = ["scan", "file", "-f", urlsFile];
-            
-            // Add gowitness parameters
-            args.push("--screenshot-path", screenshot_path);
-            if (chrome_window_x) args.push("--chrome-window-x", chrome_window_x.toString());
-            if (chrome_window_y) args.push("--chrome-window-y", chrome_window_y.toString());
-            if (timeout) args.push("--timeout", timeout.toString());
-            if (delay) args.push("--delay", delay.toString());
-            if (threads) args.push("--threads", threads.toString());
-            if (format) args.push("--screenshot-format", format);
-            if (write_db) args.push("--write-db");
-            if (write_jsonl) args.push("--write-jsonl");
-            
-            // Add default writer to avoid warnings if none specified
+
+            const spawnArgs = ["scan", "file", "-f", urlsFile];
+
+            spawnArgs.push("--screenshot-path", safeScreenshotPath);
+            if (chrome_window_x) spawnArgs.push("--chrome-window-x", chrome_window_x.toString());
+            if (chrome_window_y) spawnArgs.push("--chrome-window-y", chrome_window_y.toString());
+            if (timeout) spawnArgs.push("--timeout", timeout.toString());
+            if (delay) spawnArgs.push("--delay", delay.toString());
+            if (threads) spawnArgs.push("--threads", threads.toString());
+            if (format) spawnArgs.push("--screenshot-format", format);
+            if (write_db) spawnArgs.push("--write-db");
+            if (write_jsonl) spawnArgs.push("--write-jsonl");
+
             if (!write_db && !write_jsonl) {
-                args.push("--write-none");
+                spawnArgs.push("--write-none");
             }
 
-            const proc = spawn(gowitnessPath, args);
-            let output = "";
+            const result = await secureSpawn(gowitnessPath, spawnArgs);
+            const output = result.stdout + result.stderr;
 
-            proc.stdout.on("data", (data) => {
-                output += data.toString();
-            });
+            try { await unlink(urlsFile); } catch { /* ignore cleanup errors */ }
 
-            proc.stderr.on("data", (data) => {
-                output += data.toString();
-            });
+            if (result.exitCode !== 0) {
+                throw new Error(`gowitness exited with code ${result.exitCode}:\n${output}`);
+            }
 
-            return new Promise((resolve, reject) => {
-                proc.on("close", async (code) => {
-                    // Clean up the temporary URLs file
-                    try {
-                        await unlink(urlsFile);
-                    } catch (cleanupError) {
-                        // Ignore cleanup errors
-                    }
-                    
-                    if (code === 0) {
-                        resolve({
-                            content: [{
-                                type: "text",
-                                text: `Batch screenshot completed for ${urls.length} URLs.\nOutput: ${output}\n\nScreenshots saved to: ${screenshot_path}`
-                            }]
-                        });
-                    } else {
-                        reject(new Error(`gowitness exited with code ${code}:\n${output}`));
-                    }
-                });
-
-                proc.on("error", (error) => {
-                    reject(new Error(`Failed to start gowitness: ${error.message}`));
-                });
-            });
+            return {
+                content: [{
+                    type: "text" as const,
+                    text: `Batch screenshot completed for ${urls.length} URLs.\nOutput: ${output}\n\nScreenshots saved to: ${safeScreenshotPath}`
+                }]
+            };
         } catch (error) {
-            throw new Error(`Failed to create URLs file: ${error instanceof Error ? error.message : String(error)}`);
+            throw new Error(`Failed to process batch screenshots: ${error instanceof Error ? error.message : String(error)}`);
         }
     }
 );
@@ -348,41 +246,30 @@ server.tool(
         file_path: z.string().describe("Path to the screenshot file to read"),
         screenshot_dir: z.string().optional().describe("Directory to search for screenshot files (if file_path is not absolute)"),
     },
-    async ({ file_path, screenshot_dir }: {
-        file_path: string;
-        screenshot_dir?: string;
-    }) => {
-        try {
-            let fullPath = file_path;
-            
-            // If it's not an absolute path, combine with screenshot_dir
-            if (!file_path.includes('\\') && !file_path.includes('/') && screenshot_dir) {
-                fullPath = join(screenshot_dir, file_path);
+    async ({ file_path, screenshot_dir }) => {
+        const baseDir = resolve(screenshot_dir || "./screenshots");
+
+        // Validate the file path stays within the screenshot directory
+        const fullPath = sanitizePath(file_path, baseDir);
+
+        await access(fullPath);
+
+        const binaryData = await readFile(fullPath);
+        const stats = await stat(fullPath);
+
+        return {
+            content: [{
+                type: "text" as const,
+                text: `File read successfully. Binary data size: ${binaryData.length} bytes`
+            }],
+            binaryData: binaryData.toString('base64'),
+            metadata: {
+                filename: file_path,
+                size: binaryData.length,
+                path: fullPath,
+                lastModified: stats.mtime.toISOString()
             }
-            
-            // Check if file exists
-            await access(fullPath);
-            
-            // Read the binary data
-            const binaryData = await readFile(fullPath);
-            const stats = await stat(fullPath);
-            
-            return {
-                content: [{
-                    type: "text",
-                    text: `File read successfully. Binary data size: ${binaryData.length} bytes`
-                }],
-                binaryData: binaryData.toString('base64'),
-                metadata: {
-                    filename: file_path,
-                    size: binaryData.length,
-                    path: fullPath,
-                    lastModified: stats.mtime.toISOString()
-                }
-            };
-        } catch (error) {
-            throw new Error(`Failed to read file: ${error instanceof Error ? error.message : String(error)}`);
-        }
+        };
     }
 );
 
@@ -393,44 +280,39 @@ server.tool(
     {
         screenshot_dir: z.string().optional().describe("Directory to search for screenshots (default: ./screenshots)"),
     },
-    async ({ screenshot_dir = "./screenshots" }: {
-        screenshot_dir?: string;
-    }) => {
-        try {
-            await access(screenshot_dir);
-            const files = await readdir(screenshot_dir);
-            
-            const imageFiles = files.filter(file => 
-                file.endsWith('.jpeg') || file.endsWith('.png') || file.endsWith('.jpg')
-            );
-            
-            const fileDetails = await Promise.all(
-                imageFiles.map(async file => {
-                    const filePath = join(screenshot_dir, file);
-                    const stats = await stat(filePath);
-                    return {
-                        filename: file,
-                        path: filePath,
-                        size: stats.size,
-                        created: stats.mtime.toISOString()
-                    };
-                })
-            );
-            
-            // Sort by creation time (newest first)
-            fileDetails.sort((a, b) => new Date(b.created).getTime() - new Date(a.created).getTime());
-            
-            return {
-                content: [{
-                    type: "text",
-                    text: `Found ${fileDetails.length} screenshot files in ${screenshot_dir}:\n` +
-                          fileDetails.map(f => `• ${f.filename} (${f.size} bytes, ${f.created})`).join('\n')
-                }],
-                files: fileDetails
-            };
-        } catch (error) {
-            throw new Error(`Failed to list screenshots: ${error instanceof Error ? error.message : String(error)}`);
-        }
+    async ({ screenshot_dir = "./screenshots" }) => {
+        const safeDir = sanitizePath(screenshot_dir, process.cwd());
+
+        await access(safeDir);
+        const files = await readdir(safeDir);
+
+        const imageFiles = files.filter(file =>
+            file.endsWith('.jpeg') || file.endsWith('.png') || file.endsWith('.jpg')
+        );
+
+        const fileDetails = await Promise.all(
+            imageFiles.map(async file => {
+                const filePath = join(safeDir, file);
+                const stats = await stat(filePath);
+                return {
+                    filename: file,
+                    path: filePath,
+                    size: stats.size,
+                    created: stats.mtime.toISOString()
+                };
+            })
+        );
+
+        fileDetails.sort((a, b) => new Date(b.created).getTime() - new Date(a.created).getTime());
+
+        return {
+            content: [{
+                type: "text" as const,
+                text: `Found ${fileDetails.length} screenshot files in ${safeDir}:\n` +
+                      fileDetails.map(f => `• ${f.filename} (${f.size} bytes, ${f.created})`).join('\n')
+            }],
+            files: fileDetails
+        };
     }
 );
 
@@ -446,9 +328,8 @@ function getHostnameFromUrl(url: string): string {
 
 // Start the server
 async function main() {
-    const transport = new StdioServerTransport();
-    await server.connect(transport);
-    console.error("Enhanced gowitness MCP Server running on stdio");
+    await startServer(server);
+    console.error("Enhanced gowitness MCP Server running");
 }
 
 main().catch((err) => {

@@ -1,8 +1,8 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { z } from "zod";
+import { secureSpawn, removeAnsiCodes, getEnvOrArg, startServer } from "mcp-shared";
 const { getFindingsFromScoutSuite, extractReportJsPath } = require('./parser');
-const z = require('zod');
-const pty = require('node-pty');
+
 const args = process.argv.slice(2);
 if (args.length === 0) {
     console.error("Usage: scoutsuite-mcp <scoutsuite binary>");
@@ -25,9 +25,9 @@ server.tool(
         skip_services: z.array(z.string()).optional().describe("A list of AWS service names to exclude from scope"),
         profile: z.string().optional().describe("Use a named AWS CLI profile for authentication"),
         acces_keys: z.string().optional().describe("Run using access keys instead of profile (use access_key_id, secret_access_key, and optionally session_token)"),
-        access_key_id: z.string().optional().describe("AWS Access Key ID used for authentication"),
-        secret_acces_key: z.string().optional().describe("AWS Secret Access Key used for authentication"),
-        session_token: z.string().optional().describe("Temporary AWS session token (if using temporary credentials)"),
+        access_key_id: z.string().optional().describe("AWS Access Key ID used for authentication (or set AWS_ACCESS_KEY_ID env var)"),
+        secret_acces_key: z.string().optional().describe("AWS Secret Access Key used for authentication (or set AWS_SECRET_ACCESS_KEY env var)"),
+        session_token: z.string().optional().describe("Temporary AWS session token (or set AWS_SESSION_TOKEN env var)"),
         regions: z.string().optional().describe("Comma-separated list of AWS regions to include in the scan (default: all regions)"),
         exclude_regions: z.string().optional().describe("Comma-separated list of AWS regions to exclude from the scan"),
         ip_ranges: z.string().optional().describe("Path to JSON file(s) containing known IP ranges to match findings against"),
@@ -40,73 +40,63 @@ server.tool(
         if (max_workers) scoutSuiteArgs.push("--max-workers", max_workers.toString());
         if (services?.length) {
             scoutSuiteArgs.push("--services");
-            for (var i = 0; i < services.length; i++) {
-                scoutSuiteArgs.push(services[i])
+            for (let i = 0; i < services.length; i++) {
+                scoutSuiteArgs.push(services[i]);
             }
         }
 
         if (skip_services?.length) {
             scoutSuiteArgs.push("--skip");
-            for (var i = 0; i < skip_services.length; i++) {
-                scoutSuiteArgs.push(skip_services[i])
+            for (let i = 0; i < skip_services.length; i++) {
+                scoutSuiteArgs.push(skip_services[i]);
             }
         }
         if (profile) scoutSuiteArgs.push("--profile", profile);
-        if (acces_keys) scoutSuiteArgs.push("--access-keys"); // This is a flag, presence indicates manual credentials
-        if (access_key_id) scoutSuiteArgs.push("--access-key-id", access_key_id);
-        if (secret_acces_key) scoutSuiteArgs.push("--secret-access-key", secret_acces_key);
-        if (session_token) scoutSuiteArgs.push("--session-token", session_token);
+        if (acces_keys) scoutSuiteArgs.push("--access-keys");
+
+        // Prefer env vars for credentials, fall back to parameters
+        const keyId = process.env.AWS_ACCESS_KEY_ID || access_key_id;
+        const secretKey = process.env.AWS_SECRET_ACCESS_KEY || secret_acces_key;
+        const sessToken = process.env.AWS_SESSION_TOKEN || session_token;
+
+        if (keyId) scoutSuiteArgs.push("--access-key-id", keyId);
+        if (secretKey) scoutSuiteArgs.push("--secret-access-key", secretKey);
+        if (sessToken) scoutSuiteArgs.push("--session-token", sessToken);
         if (regions) scoutSuiteArgs.push("--regions", regions);
         if (exclude_regions) scoutSuiteArgs.push("--exclude-regions", exclude_regions);
         if (ip_ranges) scoutSuiteArgs.push("--ip-ranges", ip_ranges);
         if (ip_ranges_name_key) scoutSuiteArgs.push("--ip-ranges-name-key", ip_ranges_name_key);
 
-        let output = "";
-
-
-        const scoutSuite = pty.spawn(args[0], scoutSuiteArgs, {
-            name: 'xterm-color',
-            cols: 80,
-            rows: 30,
-            cwd: process.cwd(),
-            env: process.env
+        const result = await secureSpawn(args[0], scoutSuiteArgs, {
+            timeoutMs: 600_000, // ScoutSuite scans can take a while — 10 min
         });
 
-        scoutSuite.on('data', function (data: string) {
-            output += data.toString();
-        });
+        const output = removeAnsiCodes(result.stdout + result.stderr);
 
-        // Handle process completion
-        return new Promise((resolve, reject) => {
-            scoutSuite.on('close', function (code: number) {
-                if (code === 0 || typeof code === "undefined") {
-                    let findings = getFindingsFromScoutSuite(extractReportJsPath(output), full_report)
+        if (result.exitCode !== 0) {
+            throw new Error(`scoutsuite exited with code ${result.exitCode}:\n${output}`);
+        }
 
-                    const resolveData: any = {
-                        content: [{
-                            type: "text",
-                            text: JSON.stringify(findings, null, 2)
-                        }]
-                    };
-                    resolve(resolveData);
-                } else {
-                    reject(new Error(`scoutsuite exited with code ${code}`));
-                }
-            });
-            scoutSuite.on('error', function (error: Error) {
-                if (typeof error.cause !== "undefined") {
-                    reject(new Error(`Error to start scoutsuite: ${error.cause}`));
-                }
-            });
-        });
+        const reportPath = extractReportJsPath(output);
+        if (!reportPath) {
+            throw new Error("Could not extract report path from ScoutSuite output");
+        }
+
+        const findings = getFindingsFromScoutSuite(reportPath, full_report);
+
+        return {
+            content: [{
+                type: "text" as const,
+                text: JSON.stringify(findings, null, 2)
+            }]
+        };
     },
 );
 
 // Start the server
 async function main() {
-    const transport = new StdioServerTransport();
-    await server.connect(transport);
-    console.error("scoutsuite MCP Server running on stdio");
+    await startServer(server);
+    console.error("scoutsuite MCP Server running");
 }
 
 main().catch((error) => {

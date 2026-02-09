@@ -1,9 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const mcp_js_1 = require("@modelcontextprotocol/sdk/server/mcp.js");
-const stdio_js_1 = require("@modelcontextprotocol/sdk/server/stdio.js");
 const zod_1 = require("zod");
-const child_process_1 = require("child_process");
+const mcp_shared_1 = require("mcp-shared");
 const args = process.argv.slice(2);
 if (args.length === 0) {
     console.error("Usage: ffuf-mcp <ffuf binary>");
@@ -101,41 +100,20 @@ OUTPUT OPTIONS:
   -or                 Don't create the output file if we don't have results (default: false)
     `),
 }, async ({ url, ffuf_args }) => {
-    const ffuf = (0, child_process_1.spawn)(args[0], ['-u', url, ...ffuf_args]);
-    let output = '';
-    // Handle stdout
-    ffuf.stdout.on('data', (data) => {
-        output += data.toString();
-    });
-    // Handle stderr
-    ffuf.stderr.on('data', (data) => {
-        output += data.toString();
-    });
-    // Handle process completion
-    return new Promise((resolve, reject) => {
-        ffuf.on('close', (code) => {
-            if (code === 0) {
-                resolve({
-                    content: [{
-                            type: "text",
-                            text: output + "\n ffuf completed successfully"
-                        }]
-                });
-            }
-            else {
-                reject(new Error(`ffuf exited with code ${code}`));
-            }
-        });
-        ffuf.on('error', (error) => {
-            reject(new Error(`Failed to start ffuf: ${error.message}`));
-        });
-    });
+    const result = await (0, mcp_shared_1.secureSpawn)(args[0], ['-u', url, ...ffuf_args]);
+    if (result.exitCode !== 0) {
+        throw new Error(`ffuf exited with code ${result.exitCode}:\n${result.stderr}`);
+    }
+    return {
+        content: [{
+                type: "text",
+                text: (result.stdout + result.stderr) || "No output from ffuf."
+            }]
+    };
 });
-// Start the server
 async function main() {
-    const transport = new stdio_js_1.StdioServerTransport();
-    await server.connect(transport);
-    console.error("ffuf MCP Server running on stdio");
+    await (0, mcp_shared_1.startServer)(server);
+    console.error("ffuf MCP Server running");
 }
 main().catch((error) => {
     console.error("Fatal error in main():", error);

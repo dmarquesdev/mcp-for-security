@@ -1,5 +1,4 @@
-const fs = require('fs');
-const vm = require('vm');
+import * as fs from 'fs';
 
 interface Findings {
     [key: string]: any;
@@ -34,13 +33,21 @@ function getFindingsFromScoutSuite(
 ): FullReportResult | SummaryReportResult {
     const fileContent = fs.readFileSync(filePath, 'utf-8');
 
-    const context: Record<string, any> = {};
-    vm.createContext(context);
-    vm.runInContext(fileContent, context);
+    // Safely extract the JSON object assigned to scoutsuite_results
+    // ScoutSuite writes files like: scoutsuite_results = {...JSON...};
+    const match = fileContent.match(/scoutsuite_results\s*=\s*({[\s\S]*})\s*;?\s*$/);
+    if (!match) {
+        throw new Error('Could not extract scoutsuite_results from report file');
+    }
 
-    const results: ScoutSuiteResults = context.scoutsuite_results;
+    let results: ScoutSuiteResults;
+    try {
+        results = JSON.parse(match[1]);
+    } catch (e) {
+        throw new Error(`Failed to parse ScoutSuite results as JSON: ${e instanceof Error ? e.message : String(e)}`);
+    }
+
     const services = results.services;
-
     const servicesWithFindings: FullReportResult | SummaryReportResult = {};
 
     for (const [serviceName, serviceData] of Object.entries(services)) {
@@ -64,4 +71,4 @@ function extractReportJsPath(output: string): string | null {
 }
 
 
-module.exports = { getFindingsFromScoutSuite,extractReportJsPath };
+module.exports = { getFindingsFromScoutSuite, extractReportJsPath };

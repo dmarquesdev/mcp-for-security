@@ -1,9 +1,9 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import axios from 'axios';
 import removeHeadersData from "./owasp_headers_remove.json";
 import addHeadersData from "./owasp_headers_add.json";
+import { startServer } from "mcp-shared";
 
 // Create server instance
 const server = new McpServer({
@@ -52,34 +52,26 @@ server.tool(
         target: z.string().describe("Target URL to analyze (e.g., https://example.com). The tool will make a request to this URL and evaluate its HTTP response headers for security issues."),
     },
     async ({ target }) => {
-        return new Promise((resolve, reject) => {
-            fetchHttpHeaders(target)
-                .then(async headers => {
-                    const removeHeaders = await findMatchingRemoveHeaders(headers);
-                    const addedHeaders = await findMatchingAddedHeaders(headers);
-                    const result = { 
-                        removeHeaders: removeHeaders.length > 0 ? removeHeaders : ["No headers to remove"],
-                        addedHeaders: addedHeaders.length > 0 ? addedHeaders : ["No headers to add"]
-                    };
-                    resolve({
-                        content: [{
-                            type: "text",
-                            text: JSON.stringify(result, null, 2)
-                        }]
-                    });
-                })
-                .catch(error => {
-                    reject(error);
-                });
-        });
+        const headers = await fetchHttpHeaders(target);
+        const removeHeaders = await findMatchingRemoveHeaders(headers);
+        const addedHeaders = await findMatchingAddedHeaders(headers);
+        const result = {
+            removeHeaders: removeHeaders.length > 0 ? removeHeaders : ["No headers to remove"],
+            addedHeaders: addedHeaders.length > 0 ? addedHeaders : ["No headers to add"]
+        };
+        return {
+            content: [{
+                type: "text" as const,
+                text: JSON.stringify(result, null, 2)
+            }]
+        };
     }
 );
 
 // Start the server
 async function main() {
-    const transport = new StdioServerTransport();
-    await server.connect(transport);
-    console.error("http-headers-security MCP Server running on stdio");
+    await startServer(server);
+    console.error("http-headers-security MCP Server running");
 }
 
 main().catch((error) => {

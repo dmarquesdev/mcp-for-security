@@ -1,7 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { spawn } from 'child_process';
+import { secureSpawn, startServer, removeAnsiCodes } from "mcp-shared";
 
 const args = process.argv.slice(2);
 if (args.length === 0) {
@@ -27,9 +26,9 @@ server.tool(
         chunkSize: z.number().optional().describe("Chunk size. The number of parameters to be sent at once"),
 
     },
-    async ({ url, textFile, wordlist, method, rateLimit,chunkSize }) => {
+    async ({ url, textFile, wordlist, method, rateLimit, chunkSize }) => {
         // Build command arguments
-        const arjunArgs = []
+        const arjunArgs: string[] = [];
 
         if (!url && !textFile) {
             throw new Error("url or textfile parameter required");
@@ -52,47 +51,30 @@ server.tool(
         if (chunkSize){
             arjunArgs.push('--rate-limit', chunkSize.toString());
         }
-        
 
-        const arjun = spawn(args[0], arjunArgs);
-        let output = '';
-        // Handle stdout
-        arjun.stdout.on('data', (data) => {
-            output += data.toString();
-        });
+        const result = await secureSpawn(args[0], arjunArgs);
 
-        // Handle stderr
-        arjun.stderr.on('data', (data) => {
-            output += data.toString();
-        });
+        if (result.exitCode !== 0) {
+            return {
+                content: [{
+                    type: "text" as const,
+                    text: removeAnsiCodes(`arjun exited with code ${result.exitCode}\n${result.stderr}`)
+                }]
+            };
+        }
 
-        // Handle process completion
-        return new Promise((resolve, reject) => {
-            arjun.on('close', (code) => {
-                if (code === 0) {
-                    resolve({
-                        content: [{
-                            type: "text",
-                            text: output
-                        }]
-                    });
-                } else {
-                    reject(new Error(`arjun exited with code ${code}`));
-                }
-            });
-
-            arjun.on('error', (error) => {
-                reject(new Error(`Failed to start arjun: ${error.message}`));
-            });
-        });
+        return {
+            content: [{
+                type: "text" as const,
+                text: removeAnsiCodes(result.stdout)
+            }]
+        };
     },
 );
 
 // Start the server
 async function main() {
-    const transport = new StdioServerTransport();
-    await server.connect(transport);
-    console.error("arjun MCP Server running on stdio");
+    await startServer(server);
 }
 
 main().catch((error) => {

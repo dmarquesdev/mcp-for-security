@@ -4,11 +4,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const mcp_js_1 = require("@modelcontextprotocol/sdk/server/mcp.js");
-const stdio_js_1 = require("@modelcontextprotocol/sdk/server/stdio.js");
 const zod_1 = require("zod");
 const axios_1 = __importDefault(require("axios"));
 const owasp_headers_remove_json_1 = __importDefault(require("./owasp_headers_remove.json"));
 const owasp_headers_add_json_1 = __importDefault(require("./owasp_headers_add.json"));
+const mcp_shared_1 = require("mcp-shared");
 // Create server instance
 const server = new mcp_js_1.McpServer({
     name: "http-headers-security",
@@ -46,32 +46,24 @@ async function findMatchingAddedHeaders(headers) {
 server.tool("analyze-http-header", "Perform security analysis of HTTP response headers for a web application. This tool examines HTTP headers against OWASP security best practices, identifying both potentially dangerous headers that should be removed and recommended security headers that are missing. Results include specific recommendations for improving security posture.", {
     target: zod_1.z.string().describe("Target URL to analyze (e.g., https://example.com). The tool will make a request to this URL and evaluate its HTTP response headers for security issues."),
 }, async ({ target }) => {
-    return new Promise((resolve, reject) => {
-        fetchHttpHeaders(target)
-            .then(async (headers) => {
-            const removeHeaders = await findMatchingRemoveHeaders(headers);
-            const addedHeaders = await findMatchingAddedHeaders(headers);
-            const result = {
-                removeHeaders: removeHeaders.length > 0 ? removeHeaders : ["No headers to remove"],
-                addedHeaders: addedHeaders.length > 0 ? addedHeaders : ["No headers to add"]
-            };
-            resolve({
-                content: [{
-                        type: "text",
-                        text: JSON.stringify(result, null, 2)
-                    }]
-            });
-        })
-            .catch(error => {
-            reject(error);
-        });
-    });
+    const headers = await fetchHttpHeaders(target);
+    const removeHeaders = await findMatchingRemoveHeaders(headers);
+    const addedHeaders = await findMatchingAddedHeaders(headers);
+    const result = {
+        removeHeaders: removeHeaders.length > 0 ? removeHeaders : ["No headers to remove"],
+        addedHeaders: addedHeaders.length > 0 ? addedHeaders : ["No headers to add"]
+    };
+    return {
+        content: [{
+                type: "text",
+                text: JSON.stringify(result, null, 2)
+            }]
+    };
 });
 // Start the server
 async function main() {
-    const transport = new stdio_js_1.StdioServerTransport();
-    await server.connect(transport);
-    console.error("http-headers-security MCP Server running on stdio");
+    await (0, mcp_shared_1.startServer)(server);
+    console.error("http-headers-security MCP Server running");
 }
 main().catch((error) => {
     console.error("Fatal error in main():", error);

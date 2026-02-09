@@ -1,7 +1,6 @@
 {
   "name": "gowitness-mcp",
   "version": "1.0.0",
-  "type": "module",
   "scripts": {
     "build": "tsc",
     "dev": "tsx src/index.ts",
@@ -9,6 +8,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.2",
+    "mcp-shared": "file:../mcp-shared",
     "zod": "^3.22.0"
   },
   "devDependencies": {

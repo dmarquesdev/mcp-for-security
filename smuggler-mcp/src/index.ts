@@ -1,7 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { spawn } from 'child_process';
+import { secureSpawn, startServer, removeAnsiCodes } from "mcp-shared";
 
 const args = process.argv.slice(2);
 if (args.length !== 2) {
@@ -31,50 +30,34 @@ server.tool(
         -verify VERIFY       Verify findings with more requests; never, quick or thorough (default: quick)`)
     },
     async ({ url, smuggler_args = [] }) => {
-        const baseArgs = [args[1],"-u", url];
+        const baseArgs = [args[1], "-u", url];
         const allArgs = [...baseArgs, ...smuggler_args];
-        let output = '';
 
-        const smuggler = spawn(args[0],allArgs);
+        const result = await secureSpawn(args[0], allArgs);
 
-        smuggler.stdout.on('data', (data) => {
-            output += data.toString();
-        });
+        if (result.exitCode !== 0) {
+            return {
+                content: [{
+                    type: "text" as const,
+                    text: `Smuggler exited with code ${result.exitCode}\n${result.stderr}`
+                }]
+            };
+        }
 
-        smuggler.stderr.on('data', (data) => {
-            output += data.toString();
-        });
+        const output = removeAnsiCodes(result.stdout + result.stderr);
+        const vulnResults = parseResults(output);
 
-        return new Promise((resolve, reject) => {
-            smuggler.on('close', (code) => {
-                if (code === 0) {
-                    output = removeAnsiCodes(output);
-                    const vulnResults = parseResults(output);
-                    
-                    resolve({
-                        content: [{
-                            type: "text",
-                            text: output
-                        }],
-                        metadata: {
-                            findings: vulnResults
-                        }
-                    });
-                } else {
-                    reject(new Error(`Smuggler exited with code ${code}`));
-                }
-            });
-            
-            smuggler.on('error', (error) => {
-                reject(new Error(`Failed to start Smuggler: ${error.message}`));
-            });
-        });
+        return {
+            content: [{
+                type: "text" as const,
+                text: output
+            }],
+            metadata: {
+                findings: vulnResults
+            }
+        };
     },
 );
-
-function removeAnsiCodes(input: string): string {
-    return input.replace(/\x1B\[[0-9;]*[mGK]/g, '');
-}
 
 interface VulnEntry {
     mutation: string;
@@ -112,12 +95,10 @@ function parseResults(output: string): any {
 }
 
 async function main() {
-    const transport = new StdioServerTransport();
-    await server.connect(transport);
-    console.error("Smuggler MCP Server running on stdio");
+    await startServer(server);
 }
 
 main().catch((error) => {
     console.error("Fatal error in main():", error);
     process.exit(1);
-}); 
+});

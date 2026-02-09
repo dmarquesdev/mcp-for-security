@@ -27,7 +27,7 @@ Explore more at [https://cyprox.io](https://cyprox.io)
 
 ## 🚀 Project Overview
 
-**MCP for Security** repository contains Model Context Protocol (MCP) server implementations for various security testing tools, making them accessible through a standardized interface.
+**MCP for Security** repository contains 28 Model Context Protocol (MCP) server implementations for various security testing tools, making them accessible through a standardized interface. All servers share a common utility library (`mcp-shared/`) and support both stdio and HTTP transport.
 
 ---
 
@@ -51,28 +51,30 @@ Since each MCP server may require different dependencies, the `start.sh` bash sc
 | Amass | Advanced subdomain enumeration and reconnaissance tool | [Amass MCP Documentation](./amass-mcp) |
 | Alterx | Pattern-based wordlist generator for subdomain discovery | [Alterx MCP Documentation](./alterx-mcp/) |
 | Arjun | Run Arjun to discover hidden HTTP parameters | [Arjun MCP Documentation](./arjun-mcp) |
-| Assetfinder | Passive subdomain discovery tool based on Tomnomnom’s Assetfinder | [Assetfinder MCP Documentation](./assetfinder-mcp) |
-| Cero | Certificate-based subdomain enumeration tool leveraging TLS handshakes to extract domain names from certificate fields like SAN | [Cero MCP Documentation](./cero-mcp) |
+| Assetfinder | Passive subdomain discovery tool based on Tomnomnom's Assetfinder | [Assetfinder MCP Documentation](./assetfinder-mcp) |
+| Cero | Certificate-based subdomain enumeration tool leveraging TLS handshakes to extract domain names from certificate fields like SAN | [Cero MCP Documentation](./cero) |
 | Certificate Search (crt.sh) | Subdomain discovery tool using SSL certificate logs | [Certificate Search MCP Documentation](./crtsh-mcp/) |
+| Commix | Command injection detection and exploitation tool | [Commix MCP Documentation](./commix-mcp/) |
 | FFUF | Web content fuzzing tool for discovering hidden files and directories | [FFUF MCP Documentation](./ffuf-mcp/) |
 | GitHub Subdomains | Subdomain discovery tool that searches GitHub code using the GitHub API | [GitHub Subdomains MCP Documentation](./github-subdomains-mcp/) |
+| Gobuster | URI, DNS, S3, GCS, and vhost brute-forcing tool | [Gobuster MCP Documentation](./gobuster-mcp/) |
 | Gowitness | Web screenshot and reconnaissance tool for capturing and analyzing web pages | [Gowitness MCP Documentation](./gowitness-mcp/) |
 | HTTP Headers Security | Analyzer for HTTP security headers against OWASP standards | [HTTP Headers MCP Documentation](./http-headers-security-mcp/) |
-| httpx | Fast and multi-purpose HTTP toolkit for port scanning. | [httpx MCP Documentation](./httpx-mcp) |
+| httpx | Fast and multi-purpose HTTP toolkit for port scanning | [httpx MCP Documentation](./httpx-mcp) |
 | Katana | Fast and flexible web crawler with JS parsing and hybrid crawling support | [Katana MCP Documentation](./katana-mcp/) |
 | Masscan | Fast port scanner for large-scale network discovery | [Masscan MCP Documentation](./masscan-mcp/) |
 | MobSF | Mobile security framework for analyzing mobile applications | [MobSF MCP Documentation](./mobsf-mcp/) |
 | Nmap | Comprehensive network scanning tool for service and vulnerability discovery | [Nmap MCP Documentation](./nmap-mcp/) |
 | Nuclei | Vulnerability scanner using custom templates | [Nuclei MCP Documentation](./nuclei-mcp/) |
 | Scout Suite | Cloud security auditing tool for assessing configurations across multiple services | [Scout Suite MCP Documentation](./scoutsuite-mcp/) |
-| SSLScan | SSL/TLS configuration analyzer for security assessment | [SSLScan MCP Documentation](./sslscan-mcp/) |
-| testssl.sh | Comprehensive TLS/SSL testing tool for protocols, ciphers, vulnerabilities, and certificates | [testssl MCP Documentation](./testssl-mcp/) |
+| SecLists | Security tester's wordlist collection — browse, search, and retrieve wordlists for use with other tools | [SecLists MCP Documentation](./seclists-mcp/) |
 | shuffledns | High-speed and customizable DNS brute-forcing and resolution tool | [shuffledns MCP Documentation](./shuffledns-mcp) |
-| Subfinder | Fast passive subdomain enumeration tool for discovering valid subdomains | [Subfinder MCP Documentation](./subfinder-mcp/) |
 | Smuggler | Advanced tool for detecting HTTP Request Smuggling vulnerabilities | [Smuggler MCP Documentation](./smuggler-mcp) |
 | SQLmap | Advanced SQL injection detection and exploitation tool | [SQLmap MCP Documentation](./sqlmap-mcp/) |
+| SSLScan | SSL/TLS configuration analyzer for security assessment | [SSLScan MCP Documentation](./sslscan-mcp/) |
+| Subfinder | Fast passive subdomain enumeration tool for discovering valid subdomains | [Subfinder MCP Documentation](./subfinder-mcp/) |
+| testssl.sh | Comprehensive TLS/SSL testing tool for protocols, ciphers, vulnerabilities, and certificates | [testssl MCP Documentation](./testssl-mcp/) |
 | Waybackurls | Tool for retrieving historical URLs from the Wayback Machine | [Waybackurls MCP Documentation](./waybackurls-mcp/) |
-| SecLists | Security tester's wordlist collection — browse, search, and retrieve wordlists for use with other tools | [SecLists MCP Documentation](./seclists-mcp/) |
 | WPScan | WordPress vulnerability scanner for detecting plugins, themes, and configuration issues | [WPScan MCP Documentation](./wpscan-mcp/) |
 
 ## Quick Reference
@@ -92,14 +94,20 @@ Discovers subdomains related to a given domain using passive enumeration techniq
 ### Cero MCP Server
 Certificate-based subdomain discovery tool that extracts domain names from TLS certificates for reconnaissance and infrastructure mapping.
 
-### Certificate Search (crt.sh) MCP  
+### Certificate Search (crt.sh) MCP
 Discovers subdomains by querying SSL certificate transparency logs without active scanning.
 
-### FFUF MCP Server  
+### Commix MCP
+Command injection detection and exploitation tool that tests URLs for OS command injection vulnerabilities.
+
+### FFUF MCP Server
 URL-based fuzzing tool with support for all FFUF command line arguments.
 
 ### GitHub Subdomains MCP
 Discovers subdomains by searching GitHub code using the GitHub API. Requires a GitHub personal access token for authentication.
+
+### Gobuster MCP Server
+URI, DNS, S3, GCS, vhost, and TFTP brute-forcing tool with support for multiple scanning modes and customizable wordlists.
 
 ### Gowitness MCP Server
 Web screenshot and reconnaissance tool that captures screenshots of web pages, analyzes HTTP responses, and provides visual reconnaissance capabilities for security assessments and web application testing.
@@ -156,8 +164,29 @@ Retrieves historical URLs from the Wayback Machine to discover forgotten endpoin
 WordPress vulnerability scanner for detecting outdated plugins, themes, and common misconfigurations.
 
 
-## TO-DO Tools 
-- commix
+## Shared Library (`mcp-shared/`)
+
+All servers depend on a shared utility library that provides:
+
+- **`secureSpawn()`** — Secure child process spawning with stdin detached (`stdio: ['ignore', 'pipe', 'pipe']`), 50MB output buffer limit, and 5-minute timeout
+- **`sanitizePath()`** — Path traversal prevention for user-supplied file paths
+- **`removeAnsiCodes()`** — ANSI escape code stripping for clean output
+- **`startServer()`** — Dual transport bootstrap (stdio default, HTTP via `--transport http --port N`)
+- **`getEnvOrArg()`** — Credential helper that prefers environment variables over CLI arguments
+
+### HTTP Transport
+
+All servers support HTTP transport in addition to the default stdio:
+
+```bash
+# Stdio (default)
+node nmap-mcp/build/index.js nmap
+
+# HTTP transport on port 3001
+node nmap-mcp/build/index.js nmap --transport http --port 3001
+```
+
+## TO-DO Tools
 - Corsy
 - CrackMapExec
 - crlfuzz
@@ -178,17 +207,26 @@ WordPress vulnerability scanner for detecting outdated plugins, themes, and comm
 - tlsx
 - wafw00f
 - webscreenshot
-- wpscan
 - ...
 
 ## Development
 
-The project uses TypeScript and the Model Context Protocol SDK. To contribute:
+The project uses TypeScript and the Model Context Protocol SDK (`@modelcontextprotocol/sdk` ^1.17.2). All servers share a common utility library (`mcp-shared/`).
+
+### Prerequisites
+
+Build the shared library first:
+```bash
+cd mcp-shared && npm install && npm run build
+```
+
+### Contributing
 
 1. Fork the repository
 2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
+3. Make your changes (see `CLAUDE.md` for architecture details and conventions)
+4. Ensure your server builds: `npm install && npm run build`
+5. Submit a pull request
 
 ## Installation
 

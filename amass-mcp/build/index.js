@@ -1,9 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const mcp_js_1 = require("@modelcontextprotocol/sdk/server/mcp.js");
-const stdio_js_1 = require("@modelcontextprotocol/sdk/server/stdio.js");
 const zod_1 = require("zod");
-const child_process_1 = require("child_process");
+const mcp_shared_1 = require("mcp-shared");
 const args = process.argv.slice(2);
 if (args.length === 0) {
     console.error("Usage: amass-mcp <amass binary>");
@@ -27,7 +26,6 @@ server.tool("amass", "Advanced subdomain enumeration and reconnaissance tool", {
     enum_brute: zod_1.z.boolean().optional().describe("Whether to perform brute force subdomain discovery (true/false)"),
     enum_brute_wordlist: zod_1.z.string().optional().describe("Path to custom wordlist file for brute force operations (e.g., '/path/to/wordlist.txt')")
 }, async ({ subcommand, domain, intel_whois, intel_organization, enum_type, enum_brute, enum_brute_wordlist }) => {
-    const amassCommand = "amass";
     let amassArgs = [subcommand];
     // Handle different subcommands
     if (subcommand === "enum") {
@@ -72,44 +70,26 @@ server.tool("amass", "Advanced subdomain enumeration and reconnaissance tool", {
             amassArgs.push("-whois");
         }
     }
-    console.log(`Executing: amass ${amassArgs.join(' ')}`);
-    const amass = (0, child_process_1.spawn)(amassCommand, amassArgs);
-    let output = '';
-    // Handle stdout
-    amass.stdout.on('data', (data) => {
-        const chunk = data.toString();
-        output += chunk;
-    });
-    // Handle stderr
-    amass.stderr.on('data', (data) => {
-        const chunk = data.toString();
-        output += chunk;
-    });
-    // Handle process completion
-    return new Promise((resolve, reject) => {
-        amass.on('close', (code) => {
-            if (code === 0) {
-                resolve({
-                    content: [{
-                            type: "text",
-                            text: output
-                        }]
-                });
-            }
-            else {
-                reject(new Error(`Amass exited with code ${code}. Output: ${output}. Args:${amassArgs}`));
-            }
-        });
-        amass.on('error', (error) => {
-            reject(new Error(`Failed to start Amass: ${error.message}`));
-        });
-    });
+    console.error(`Executing: amass ${amassArgs.join(' ')}`);
+    const result = await (0, mcp_shared_1.secureSpawn)(args[0], amassArgs);
+    if (result.exitCode !== 0) {
+        return {
+            content: [{
+                    type: "text",
+                    text: `Amass exited with code ${result.exitCode}. Output: ${result.stdout}${result.stderr}. Args:${amassArgs}`
+                }]
+        };
+    }
+    return {
+        content: [{
+                type: "text",
+                text: result.stdout
+            }]
+    };
 });
 // Start the server
 async function main() {
-    const transport = new stdio_js_1.StdioServerTransport();
-    await server.connect(transport);
-    console.error("AMASS MCP Server running on stdio");
+    await (0, mcp_shared_1.startServer)(server);
 }
 main().catch((error) => {
     console.error("Fatal error in main():", error);

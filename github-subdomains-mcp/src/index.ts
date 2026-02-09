@@ -1,7 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { spawn } from 'child_process';
+import { secureSpawn, startServer } from "mcp-shared";
 
 const args = process.argv.slice(2);
 if (args.length === 0) {
@@ -36,58 +35,29 @@ server.tool(
             toolArgs.push("-t", githubToken);
         }
 
-        if (extended) {
-            toolArgs.push("-e");
+        if (extended) toolArgs.push("-e");
+        if (exit_on_rate_limit) toolArgs.push("-k");
+        if (raw) toolArgs.push("-raw");
+
+        const result = await secureSpawn(args[0], toolArgs);
+
+        if (result.exitCode !== 0) {
+            throw new Error(`github-subdomains exited with code ${result.exitCode}:\n${result.stderr}`);
         }
 
-        if (exit_on_rate_limit) {
-            toolArgs.push("-k");
-        }
-
-        if (raw) {
-            toolArgs.push("-raw");
-        }
-
-        const child = spawn(args[0], toolArgs);
-        let output = '';
-
-        // Handle stdout
-        child.stdout.on('data', (data) => {
-            output += data.toString();
-        });
-
-        // Handle stderr
-        child.stderr.on('data', (data) => {
-            output += data.toString();
-        });
-
-        // Handle process completion
-        return new Promise((resolve, reject) => {
-            child.on('close', (code) => {
-                if (code === 0 || typeof code === "undefined") {
-                    resolve({
-                        content: [{
-                            type: "text" as const,
-                            text: output || "No subdomains found."
-                        }]
-                    });
-                } else {
-                    reject(new Error(`github-subdomains exited with code ${code}`));
-                }
-            });
-
-            child.on('error', (error) => {
-                reject(new Error(`Failed to start github-subdomains: ${error.message}`));
-            });
-        });
+        return {
+            content: [{
+                type: "text" as const,
+                text: (result.stdout + result.stderr) || "No subdomains found."
+            }]
+        };
     },
 );
 
 // Start the server
 async function main() {
-    const transport = new StdioServerTransport();
-    await server.connect(transport);
-    console.error("github-subdomains MCP Server running on stdio");
+    await startServer(server);
+    console.error("github-subdomains MCP Server running");
 }
 
 main().catch((error) => {

@@ -1,7 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { spawn } from "child_process";
+import { secureSpawn, startServer } from "mcp-shared";
 
 const args = process.argv.slice(2);
 if (args.length === 0) {
@@ -14,33 +13,18 @@ const server = new McpServer({
     version: "1.0.0",
 });
 
-function runGobuster(mode: string, modeArgs: string[]): Promise<{ content: { type: "text"; text: string }[] }> {
-    const proc = spawn(args[0], [mode, ...modeArgs, "--no-progress", "--no-color", "-q"]);
-    let output = "";
+async function runGobuster(mode: string, modeArgs: string[]): Promise<{ content: { type: "text"; text: string }[] }> {
+    const result = await secureSpawn(args[0], [mode, ...modeArgs, "--no-progress", "--no-color", "-q"]);
 
-    proc.stdout.on("data", (data) => {
-        output += data.toString();
-    });
+    if (result.exitCode !== 0) {
+        return {
+            content: [{ type: "text" as const, text: `gobuster exited with code ${result.exitCode}: ${result.stdout}${result.stderr}` }],
+        };
+    }
 
-    proc.stderr.on("data", (data) => {
-        output += data.toString();
-    });
-
-    return new Promise((resolve, reject) => {
-        proc.on("close", (code) => {
-            if (code === 0 || code === null) {
-                resolve({
-                    content: [{ type: "text", text: output || "gobuster completed with no output" }],
-                });
-            } else {
-                reject(new Error(`gobuster exited with code ${code}: ${output}`));
-            }
-        });
-
-        proc.on("error", (error) => {
-            reject(new Error(`Failed to start gobuster: ${error.message}`));
-        });
-    });
+    return {
+        content: [{ type: "text" as const, text: result.stdout || "gobuster completed with no output" }],
+    };
 }
 
 // Tool 1: dir - Directory/file brute-forcing
@@ -328,9 +312,7 @@ server.tool(
 );
 
 async function main() {
-    const transport = new StdioServerTransport();
-    await server.connect(transport);
-    console.error("gobuster MCP Server running on stdio");
+    await startServer(server);
 }
 
 main().catch((error) => {

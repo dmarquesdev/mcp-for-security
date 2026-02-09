@@ -1,7 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { spawn } from 'child_process';
+import { secureSpawn, startServer } from "mcp-shared";
 
 const args = process.argv.slice(2);
 if (args.length === 0) {
@@ -29,47 +28,25 @@ server.tool(
             --max-rate 
             `),
     },
-    async ({ target, port,masscan_args }) => {
-        const masscan = spawn(args[0], ["-p" + port, target, ...masscan_args]);
-        let output = '';
+    async ({ target, port, masscan_args }) => {
+        const result = await secureSpawn(args[0], ["-p" + port, target, ...masscan_args]);
 
-        // Handle stdout
-        masscan.stdout.on('data', (data) => {
-            output += data.toString();
-        });
+        if (result.exitCode !== 0) {
+            throw new Error(`masscan exited with code ${result.exitCode}:\n${result.stderr}`);
+        }
 
-        // Handle stderr
-        masscan.stderr.on('data', (data) => {
-            output += data.toString();
-        });
-
-        // Handle process completion
-        return new Promise((resolve, reject) => {
-            masscan.on('close', (code) => {
-                if (code === 0) {
-                    resolve({
-                        content: [{
-                            type: "text",
-                            text: output + "\n masscan completed successfully"
-                        }]
-                    });
-                } else {
-                    reject(new Error(`masscan exited with code ${code}`));
-                }
-            });
-
-            masscan.on('error', (error) => {
-                reject(new Error(`Failed to start masscan: ${error.message}`));
-            });
-        });
+        return {
+            content: [{
+                type: "text" as const,
+                text: (result.stdout + result.stderr) || "No output from masscan."
+            }]
+        };
     },
 );
 
-// Start the server
 async function main() {
-    const transport = new StdioServerTransport();
-    await server.connect(transport);
-    console.error("Masscan MCP Server running on stdio");
+    await startServer(server);
+    console.error("masscan MCP Server running");
 }
 
 main().catch((error) => {

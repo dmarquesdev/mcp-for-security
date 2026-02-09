@@ -1,9 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const mcp_js_1 = require("@modelcontextprotocol/sdk/server/mcp.js");
-const stdio_js_1 = require("@modelcontextprotocol/sdk/server/stdio.js");
 const zod_1 = require("zod");
-const child_process_1 = require("child_process");
+const mcp_shared_1 = require("mcp-shared");
 const args = process.argv.slice(2);
 if (args.length === 0) {
     console.error("Usage: sqlmap-mcp <sqlmap binary or python3 sqlmap>");
@@ -89,41 +88,20 @@ server.tool("do-sqlmap", "Run sqlmap with specified URL", {
     
     `),
 }, async ({ url, sqlmap_args }) => {
-    const sqlmap = (0, child_process_1.spawn)(args[0], ['-u', url, ...sqlmap_args]);
-    let output = '';
-    // Handle stdout
-    sqlmap.stdout.on('data', (data) => {
-        output += data.toString();
-    });
-    // Handle stderr
-    sqlmap.stderr.on('data', (data) => {
-        output += data.toString();
-    });
-    // Handle process completion
-    return new Promise((resolve, reject) => {
-        sqlmap.on('close', (code) => {
-            if (code === 0) {
-                resolve({
-                    content: [{
-                            type: "text",
-                            text: output + "\n sqlmap completed successfully"
-                        }]
-                });
-            }
-            else {
-                reject(new Error(`sqlmap exited with code ${code}`));
-            }
-        });
-        sqlmap.on('error', (error) => {
-            reject(new Error(`Failed to start sqlmap: ${error.message}`));
-        });
-    });
+    const result = await (0, mcp_shared_1.secureSpawn)(args[0], ['-u', url, ...sqlmap_args]);
+    if (result.exitCode !== 0) {
+        throw new Error(`sqlmap exited with code ${result.exitCode}:\n${result.stderr}`);
+    }
+    return {
+        content: [{
+                type: "text",
+                text: (result.stdout + result.stderr) || "No output."
+            }]
+    };
 });
-// Start the server
 async function main() {
-    const transport = new stdio_js_1.StdioServerTransport();
-    await server.connect(transport);
-    console.error("sqlmap MCP Server running on stdio");
+    await (0, mcp_shared_1.startServer)(server);
+    console.error("sqlmap MCP Server running");
 }
 main().catch((error) => {
     console.error("Fatal error in main():", error);

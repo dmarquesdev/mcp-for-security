@@ -10,7 +10,8 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.11.0",
+    "@modelcontextprotocol/sdk": "^1.17.2",
+    "mcp-shared": "file:../mcp-shared",
     "zod": "^3.24.3"
   },
   "devDependencies": {

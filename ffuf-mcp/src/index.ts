@@ -1,7 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { spawn } from 'child_process';
+import { secureSpawn, startServer } from "mcp-shared";
 
 const args = process.argv.slice(2);
 if (args.length === 0) {
@@ -106,46 +105,24 @@ OUTPUT OPTIONS:
     `),
     },
     async ({ url, ffuf_args }) => {
-        const ffuf = spawn(args[0], ['-u', url, ...ffuf_args]);
-        let output = '';
+        const result = await secureSpawn(args[0], ['-u', url, ...ffuf_args]);
 
-        // Handle stdout
-        ffuf.stdout.on('data', (data) => {
-            output += data.toString();
-        });
+        if (result.exitCode !== 0) {
+            throw new Error(`ffuf exited with code ${result.exitCode}:\n${result.stderr}`);
+        }
 
-        // Handle stderr
-        ffuf.stderr.on('data', (data) => {
-            output += data.toString();
-        });
-
-        // Handle process completion
-        return new Promise((resolve, reject) => {
-            ffuf.on('close', (code) => {
-                if (code === 0) {
-                    resolve({
-                        content: [{
-                            type: "text",
-                            text: output + "\n ffuf completed successfully"
-                        }]
-                    });
-                } else {
-                    reject(new Error(`ffuf exited with code ${code}`));
-                }
-            });
-
-            ffuf.on('error', (error) => {
-                reject(new Error(`Failed to start ffuf: ${error.message}`));
-            });
-        });
+        return {
+            content: [{
+                type: "text" as const,
+                text: (result.stdout + result.stderr) || "No output from ffuf."
+            }]
+        };
     },
 );
 
-// Start the server
 async function main() {
-    const transport = new StdioServerTransport();
-    await server.connect(transport);
-    console.error("ffuf MCP Server running on stdio");
+    await startServer(server);
+    console.error("ffuf MCP Server running");
 }
 
 main().catch((error) => {

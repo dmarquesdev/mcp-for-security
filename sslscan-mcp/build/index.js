@@ -1,9 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const mcp_js_1 = require("@modelcontextprotocol/sdk/server/mcp.js");
-const stdio_js_1 = require("@modelcontextprotocol/sdk/server/stdio.js");
 const zod_1 = require("zod");
-const child_process_1 = require("child_process");
+const mcp_shared_1 = require("mcp-shared");
 const args = process.argv.slice(2);
 if (args.length === 0) {
     console.error("Usage: sslscan-mcp <sslscan binary>");
@@ -73,41 +72,25 @@ server.tool("do-sslscan", "Execute SSLScan, a comprehensive SSL/TLS scanner that
   --xml=<file>         Output results to an XML file. Use - for STDOUT.
 `)
 }, async ({ target, sslscan_args }) => {
-    const sslscan = (0, child_process_1.spawn)(args[0], [...sslscan_args, target]);
-    let output = '';
-    // Handle stdout
-    sslscan.stdout.on('data', (data) => {
-        output += data.toString();
-    });
-    // Handle stderr
-    sslscan.stderr.on('data', (data) => {
-        output += data.toString();
-    });
-    // Handle process completion
-    return new Promise((resolve, reject) => {
-        sslscan.on('close', (code) => {
-            if (code === 0) {
-                resolve({
-                    content: [{
-                            type: "text",
-                            text: output + "\n sslscan completed successfully"
-                        }]
-                });
-            }
-            else {
-                reject(new Error(`sslscan exited with code ${code}`));
-            }
-        });
-        sslscan.on('error', (error) => {
-            reject(new Error(`Failed to start sslscan: ${error.message}`));
-        });
-    });
+    const result = await (0, mcp_shared_1.secureSpawn)(args[0], [...sslscan_args, target]);
+    if (result.exitCode !== 0) {
+        return {
+            content: [{
+                    type: "text",
+                    text: `sslscan exited with code ${result.exitCode}\n${result.stderr}`
+                }]
+        };
+    }
+    return {
+        content: [{
+                type: "text",
+                text: result.stdout + result.stderr + "\n sslscan completed successfully"
+            }]
+    };
 });
 // Start the server
 async function main() {
-    const transport = new stdio_js_1.StdioServerTransport();
-    await server.connect(transport);
-    console.error("sslscan MCP Server running on stdio");
+    await (0, mcp_shared_1.startServer)(server);
 }
 main().catch((error) => {
     console.error("Fatal error in main():", error);

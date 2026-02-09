@@ -1,7 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { spawn } from 'child_process';
+import { secureSpawn, startServer } from "mcp-shared";
 
 const args = process.argv.slice(2);
 if (args.length === 0) {
@@ -94,46 +93,24 @@ server.tool(
     `),
     },
     async ({ url, sqlmap_args }) => {
-        const sqlmap = spawn(args[0], ['-u', url, ...sqlmap_args]);
-        let output = '';
+        const result = await secureSpawn(args[0], ['-u', url, ...sqlmap_args]);
 
-        // Handle stdout
-        sqlmap.stdout.on('data', (data) => {
-            output += data.toString();
-        });
+        if (result.exitCode !== 0) {
+            throw new Error(`sqlmap exited with code ${result.exitCode}:\n${result.stderr}`);
+        }
 
-        // Handle stderr
-        sqlmap.stderr.on('data', (data) => {
-            output += data.toString();
-        });
-
-        // Handle process completion
-        return new Promise((resolve, reject) => {
-            sqlmap.on('close', (code) => {
-                if (code === 0) {
-                    resolve({
-                        content: [{
-                            type: "text",
-                            text: output + "\n sqlmap completed successfully"
-                        }]
-                    });
-                } else {
-                    reject(new Error(`sqlmap exited with code ${code}`));
-                }
-            });
-
-            sqlmap.on('error', (error) => {
-                reject(new Error(`Failed to start sqlmap: ${error.message}`));
-            });
-        });
+        return {
+            content: [{
+                type: "text" as const,
+                text: (result.stdout + result.stderr) || "No output."
+            }]
+        };
     },
 );
 
-// Start the server
 async function main() {
-    const transport = new StdioServerTransport();
-    await server.connect(transport);
-    console.error("sqlmap MCP Server running on stdio");
+    await startServer(server);
+    console.error("sqlmap MCP Server running");
 }
 
 main().catch((error) => {

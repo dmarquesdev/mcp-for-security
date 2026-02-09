@@ -1,7 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { spawn } from 'child_process';
+import { secureSpawn, startServer } from "mcp-shared";
 
 const args = process.argv.slice(2);
 if (args.length === 0) {
@@ -23,47 +22,31 @@ server.tool(
         noSub: z.boolean().nullable().describe("When set to true, only retrieves URLs from the exact domain specified, excluding all subdomains"),
     },
     async ({ target, noSub }) => {
-        const waybackurls = spawn(args[0], [target, ...(noSub ? ['--no-subs'] : [])]);
+        const waybackurlsArgs = [target, ...(noSub ? ['--no-subs'] : [])];
 
-        let output = '';
+        const result = await secureSpawn(args[0], waybackurlsArgs);
 
-        // Handle stdout
-        waybackurls.stdout.on('data', (data: Buffer) => {
-            output += data.toString();
-        });
+        if (result.exitCode !== 0) {
+            return {
+                content: [{
+                    type: "text" as const,
+                    text: `waybackurls exited with code ${result.exitCode}\n${result.stderr}`
+                }]
+            };
+        }
 
-        // Handle stderr
-        waybackurls.stderr.on('data', (data) => {
-            output += data.toString();
-        });
-
-        // Handle process completion
-        return new Promise((resolve, reject) => {
-            waybackurls.on('close', (code) => {
-                if (code === 0) {
-                    resolve({
-                        content: [{
-                            type: "text",
-                            text: output + "\n waybackurls completed successfully"
-                        }]
-                    });
-                } else {
-                    reject(new Error(`waybackurls exited with code ${code}`));
-                }
-            });
-
-            waybackurls.on('error', (error) => {
-                reject(new Error(`Failed to start waybackurls: ${error.message}`));
-            });
-        });
+        return {
+            content: [{
+                type: "text" as const,
+                text: result.stdout + "\n waybackurls completed successfully"
+            }]
+        };
     },
 );
 
 // Start the server
 async function main() {
-    const transport = new StdioServerTransport();
-    await server.connect(transport);
-    console.error("waybackurls MCP Server running on stdio");
+    await startServer(server);
 }
 
 main().catch((error) => {

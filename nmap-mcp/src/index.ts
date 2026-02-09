@@ -1,7 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { spawn } from 'child_process';
+import { secureSpawn, startServer } from "mcp-shared";
 
 const args = process.argv.slice(2);
 if (args.length === 0) {
@@ -17,7 +16,7 @@ const server = new McpServer({
 
 server.tool(
     "do-nmap",
-    "Run nmap with specified taget",
+    "Run nmap with specified target",
     {
         target: z.string().describe("Target ip to detect open ports"),
         nmap_args: z.array(z.string()).describe(`Additional nmap arguments 
@@ -132,46 +131,24 @@ MISC:
     `),
     },
     async ({ target, nmap_args }) => {
-        const nmap = spawn(args[0], [...nmap_args,target]);
-        let output = '';
+        const result = await secureSpawn(args[0], [...nmap_args, target]);
 
-        // Handle stdout
-        nmap.stdout.on('data', (data) => {
-            output += data.toString();
-        });
+        if (result.exitCode !== 0) {
+            throw new Error(`nmap exited with code ${result.exitCode}:\n${result.stderr}`);
+        }
 
-        // Handle stderr
-        nmap.stderr.on('data', (data) => {
-            output += data.toString();
-        });
-
-        // Handle process completion
-        return new Promise((resolve, reject) => {
-            nmap.on('close', (code) => {
-                if (code === 0) {
-                    resolve({
-                        content: [{
-                            type: "text",
-                            text: output + "\n nmap completed successfully"
-                        }]
-                    });
-                } else {
-                    reject(new Error(`nmap exited with code ${code}`));
-                }
-            });
-
-            nmap.on('error', (error) => {
-                reject(new Error(`Failed to start nmap: ${error.message}`));
-            });
-        });
+        return {
+            content: [{
+                type: "text" as const,
+                text: (result.stdout + result.stderr) || "No output from nmap."
+            }]
+        };
     },
 );
 
-// Start the server
 async function main() {
-    const transport = new StdioServerTransport();
-    await server.connect(transport);
-    console.error("nmap MCP Server running on stdio");
+    await startServer(server);
+    console.error("nmap MCP Server running");
 }
 
 main().catch((error) => {

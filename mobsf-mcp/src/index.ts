@@ -1,17 +1,17 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { createMobSFClient } from './mobsf';
+import { createMobSFClient } from './mobsf.js';
+import { getEnvOrArg, startServer } from "mcp-shared";
 
-// Get command line arguments
-const args = process.argv.slice(2);
-if (args.length < 2) {
-    console.error("Usage: mobfs <baseUrl> <apiKey>");
+// Get command line arguments — prefer env vars for credentials
+const baseUrl = getEnvOrArg("MOBSF_BASE_URL", 2);
+const apiKey = getEnvOrArg("MOBSF_API_KEY", 3);
+
+if (!baseUrl || !apiKey) {
+    console.error("Usage: mobsf-mcp <baseUrl> <apiKey>");
+    console.error("  Or set MOBSF_BASE_URL and MOBSF_API_KEY environment variables");
     process.exit(1);
 }
-
-const baseUrl = args[0];
-const apiKey = args[1];
 
 // Create MobSF client
 const mobsfClient = createMobSFClient(baseUrl, apiKey);
@@ -31,20 +31,14 @@ server.tool(
         hash: z.string().describe("Hash of the file to scan"),
         reScan: z.boolean().optional().describe("Set to true to force a rescan of the file")
     },
-    async ({ hash,reScan }) => {
-        // Handle process completion
-        return new Promise((resolve, reject) => {
-            mobsfClient.scanFile(hash,reScan).then(result => {
-                resolve({
-                    content: [{
-                        type: "text",
-                        text: JSON.stringify(result, null, 2),
-                    }]
-                });
-            }).catch(error => {
-                reject(error);
-            });
-        });
+    async ({ hash, reScan }) => {
+        const result = await mobsfClient.scanFile(hash, reScan);
+        return {
+            content: [{
+                type: "text" as const,
+                text: JSON.stringify(result, null, 2),
+            }]
+        };
     }
 );
 
@@ -54,24 +48,17 @@ server.tool(
     "Upload a mobile application file (APK, IPA, or APPX) to MobSF for security analysis. This is the first step before scanning and must be done prior to using other analysis functions.",
     {
         file: z.string().describe("Upload file path"),
-
     },
     async ({ file }) => {
-        // Handle process completion
-        return new Promise((resolve, reject) => {
-            mobsfClient.uploadFile(file).then(result => {
-                resolve({
-                    content: [{
-                        type: "text",
-                        text: JSON.stringify(result, null, 2),
-                    }]
-                });
-            }).catch(error => {
-                reject(error);
-            });
-        });
+        const result = await mobsfClient.uploadFile(file);
+        return {
+            content: [{
+                type: "text" as const,
+                text: JSON.stringify(result, null, 2),
+            }]
+        };
     }
-)
+);
 
 
 server.tool(
@@ -79,48 +66,34 @@ server.tool(
     "Retrieve detailed scan logs for a previously analyzed mobile application using its hash value. These logs contain information about the scanning process and any issues encountered.",
     {
         hash: z.string().describe("Hash file to getting scan logs"),
-
     },
     async ({ hash }) => {
-        // Handle process completion
-        return new Promise((resolve, reject) => {
-            mobsfClient.getScanLogs(hash).then(result => {
-                resolve({
-                    content: [{
-                        type: "text",
-                        text: JSON.stringify(result, null, 2),
-                    }]
-                });
-            }).catch(error => {
-                reject(error);
-            });
-        });
+        const result = await mobsfClient.getScanLogs(hash);
+        return {
+            content: [{
+                type: "text" as const,
+                text: JSON.stringify(result, null, 2),
+            }]
+        };
     }
-)
+);
 
 server.tool(
     "getJsonReport",
     "Generate and retrieve a comprehensive security analysis report in JSON format for a scanned mobile application. This report includes detailed findings about security vulnerabilities, permissions, API calls, and other security-relevant information.",
     {
         hash: z.string().describe("Hash file to getting scan logs"),
-
     },
     async ({ hash }) => {
-        // Handle process completion
-        return new Promise((resolve, reject) => {
-            mobsfClient.generateJsonReport(hash).then(result => {
-                resolve({
-                    content: [{
-                        type: "text",
-                        text: JSON.stringify(result, null, 2),
-                    }]
-                });
-            }).catch(error => {
-                reject(error);
-            });
-        });
+        const result = await mobsfClient.generateJsonReport(hash);
+        return {
+            content: [{
+                type: "text" as const,
+                text: JSON.stringify(result, null, 2),
+            }]
+        };
     }
-)
+);
 
 server.tool(
     "getRecentScans",
@@ -128,30 +101,22 @@ server.tool(
     {
         page: z.number().describe("Page number for result"),
         pageSize: z.number().describe("Page size for result"),
-
     },
-    async ({ page,pageSize }) => {
-        // Handle process completion
-        return new Promise((resolve, reject) => {
-            mobsfClient.getRecentScans(page,pageSize).then(result => {
-                resolve({
-                    content: [{
-                        type: "text",
-                        text: JSON.stringify(result, null, 2),
-                    }]
-                });
-            }).catch(error => {
-                reject(error);
-            });
-        });
+    async ({ page, pageSize }) => {
+        const result = await mobsfClient.getRecentScans(page, pageSize);
+        return {
+            content: [{
+                type: "text" as const,
+                text: JSON.stringify(result, null, 2),
+            }]
+        };
     }
-)
+);
 
 // Start the server
 async function main() {
-    const transport = new StdioServerTransport();
-    await server.connect(transport);
-    console.error("mobsf MCP Server running on stdio");
+    await startServer(server);
+    console.error("mobsf MCP Server running");
 }
 
 main().catch((error) => {

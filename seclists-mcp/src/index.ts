@@ -1,8 +1,8 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { readdir, readFile, stat } from "fs/promises";
 import { join, relative } from "path";
+import { startServer } from "mcp-shared";
 
 const args = process.argv.slice(2);
 if (args.length === 0) {
@@ -57,7 +57,7 @@ server.tool(
         return {
             content: [
                 {
-                    type: "text",
+                    type: "text" as const,
                     text: `SecLists categories (${categories.length}):\n\n${categories.join("\n")}`,
                 },
             ],
@@ -77,7 +77,7 @@ server.tool(
         const targetStat = await stat(targetPath);
         if (!targetStat.isDirectory()) {
             return {
-                content: [{ type: "text", text: `Error: '${userPath}' is not a directory` }],
+                content: [{ type: "text" as const, text: `Error: '${userPath}' is not a directory` }],
             };
         }
 
@@ -110,7 +110,7 @@ server.tool(
             output += "(empty)";
         }
 
-        return { content: [{ type: "text", text: output }] };
+        return { content: [{ type: "text" as const, text: output }] };
     },
 );
 
@@ -133,7 +133,7 @@ server.tool(
         }
         output += `):\n\n${limited.join("\n")}`;
 
-        return { content: [{ type: "text", text: output }] };
+        return { content: [{ type: "text" as const, text: output }] };
     },
 );
 
@@ -151,7 +151,7 @@ server.tool(
         return {
             content: [
                 {
-                    type: "text",
+                    type: "text" as const,
                     text: `Absolute path: ${targetPath}\nSize: ${formatSize(targetStat.size)}\nType: ${targetStat.isDirectory() ? "directory" : "file"}`,
                 },
             ],
@@ -173,7 +173,7 @@ server.tool(
 
         if (targetStat.isDirectory()) {
             return {
-                content: [{ type: "text", text: `Error: '${userPath}' is a directory, not a file. Use seclists-list-wordlists instead.` }],
+                content: [{ type: "text" as const, text: `Error: '${userPath}' is a directory, not a file. Use seclists-list-wordlists instead.` }],
             };
         }
 
@@ -186,7 +186,7 @@ server.tool(
             return {
                 content: [
                     {
-                        type: "text",
+                        type: "text" as const,
                         text: `File: ${userPath}\nTotal lines: ${totalLines}\nSize: ${formatSize(targetStat.size)}`,
                     },
                 ],
@@ -202,7 +202,7 @@ server.tool(
         }
         output += preview;
 
-        return { content: [{ type: "text", text: output }] };
+        return { content: [{ type: "text" as const, text: output }] };
     },
 );
 
@@ -213,9 +213,8 @@ function formatSize(bytes: number): string {
 }
 
 async function main() {
-    const transport = new StdioServerTransport();
-    await server.connect(transport);
-    console.error("SecLists MCP Server running on stdio");
+    await startServer(server);
+    console.error("SecLists MCP Server running");
 }
 
 main().catch((error) => {

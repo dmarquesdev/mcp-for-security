@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-const pty = require('node-pty');
+import { secureSpawn, startServer } from "mcp-shared";
+
 const args = process.argv.slice(2);
 if (args.length === 0) {
     console.error("Usage: katana-mcp <katana binary>");
@@ -30,7 +30,7 @@ server.tool(
         show_brwoser: z.boolean().optional().describe("Show the browser window even in headless mode (for debugging/visual inspection)."),
     },
     async ({ target, exclude, depth, js_crawl, jsluice, headers, strategy, headless, system_chrome, show_brwoser }) => {
-        
+
         const katanaArgs = ["-u", target.join(","), "-silent"];
 
         if (exclude && exclude.length > 0) {
@@ -60,54 +60,26 @@ server.tool(
         if (show_brwoser) {
             katanaArgs.push("-show-browser");
         }
-        let output = "";
 
-        const katana = pty.spawn(args[0], katanaArgs, {
-            name: 'xterm-color',
-            cols: 80,
-            rows: 30,
-            cwd: process.cwd(),
-            env: process.env
-        });
+        const result = await secureSpawn(args[0], katanaArgs);
 
-        katana.on('data', function (data: string) {
-            output += data.toString();
-        });
+        if (result.exitCode !== 0) {
+            throw new Error(`katana exited with code ${result.exitCode}:\n${result.stderr}`);
+        }
 
-        // Handle process completion
-        return new Promise((resolve, reject) => {
-            katana.on('close', function (code: number) {
-                if (code === 0 || typeof code === "undefined") {
-                    output = removeAnsiCodes(output)
-                    const resolveData: any = {
-                        content: [{
-                            type: "text",
-                            text: output
-                        }]
-                    };
-                    resolve(resolveData);
-                } else {
-                    reject(new Error(`katana exited with code ${code}`));
-                }
-            });
-            katana.on('error', function (error: Error) {
-                if (typeof error.cause !== "undefined") {
-                    reject(new Error(`Error to start katana: ${error.cause}`));
-                }
-            });
-        });
+        return {
+            content: [{
+                type: "text" as const,
+                text: result.stdout
+            }]
+        };
     },
 );
 
-function removeAnsiCodes(input: string): string {
-    return input.replace(/\x1B\[[0-9;]*m/g, '');
-}
-
 // Start the server
 async function main() {
-    const transport = new StdioServerTransport();
-    await server.connect(transport);
-    console.error("katana MCP Server running on stdio");
+    await startServer(server);
+    console.error("katana MCP Server running");
 }
 
 main().catch((error) => {

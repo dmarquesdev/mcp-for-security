@@ -4,9 +4,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A monorepo of 23+ MCP (Model Context Protocol) server implementations that wrap popular cybersecurity tools. Each server exposes security tools as MCP tools over stdio transport, enabling AI assistants to invoke them. Maintained by Cyprox (cyprox.io).
+A monorepo of 28 MCP (Model Context Protocol) server implementations that wrap popular cybersecurity tools. Each server exposes security tools as MCP tools over stdio or HTTP transport, enabling AI assistants to invoke them. A shared utility library (`mcp-shared/`) provides secure spawn, path sanitization, ANSI stripping, and dual-transport bootstrap. Maintained by Cyprox (cyprox.io).
 
 ## Build Commands
+
+### Build the shared library (must be built first)
+```bash
+cd mcp-shared && npm install && npm run build
+```
+All servers depend on `mcp-shared` via `"file:../mcp-shared"`. Build it before building any server.
 
 ### Build a single MCP server
 ```bash
@@ -34,12 +40,19 @@ Multi-stage build on `golang:1.24-bullseye` installing Node.js v24, Python3, Rub
 
 ## Running an MCP Server
 
+### Stdio transport (default)
 ```bash
 node <tool>-mcp/build/index.js <binary-path> [additional-args]
 ```
 Example: `node nmap-mcp/build/index.js nmap`
 
-All servers communicate via stdio (StdioServerTransport). Configure in MCP clients:
+### HTTP transport
+```bash
+node <tool>-mcp/build/index.js <binary-path> --transport http --port 3001
+```
+All servers support both stdio and HTTP transport via `startServer()` from `mcp-shared`.
+
+### MCP client configuration (stdio)
 ```json
 {
   "mcpServers": {
@@ -59,14 +72,15 @@ No automated test suite exists. Testing is manual via MCP client integration.
 
 ```
 AI Assistant / MCP Client
-        │ MCP Protocol (JSON-RPC over stdio)
-        ▼
+        | MCP Protocol (JSON-RPC over stdio or HTTP)
+        v
 MCP Server Layer (Node.js TypeScript)
   - McpServer instance from @modelcontextprotocol/sdk
   - Tool registration via server.tool()
   - Input validation via Zod schemas
-        │ spawn / exec / HTTP API
-        ▼
+  - Shared utilities from mcp-shared/
+        | secureSpawn / HTTP API
+        v
 Security Tool Layer
   - Go binaries (alterx, amass, httpx, katana, nuclei, etc.)
   - Python scripts (commix, sqlmap, scoutsuite, arjun)
@@ -74,23 +88,35 @@ Security Tool Layer
   - HTTP APIs (crt.sh, MobSF, http-headers-security)
 ```
 
+### Shared Utility Library (`mcp-shared/`)
+
+All 28 servers import from the `mcp-shared` local package:
+
+| Module | Exports | Purpose |
+|--------|---------|---------|
+| `spawn.ts` | `secureSpawn()` | Spawn child processes with `stdio: ['ignore', 'pipe', 'pipe']`, 50MB output buffer limit, 5-minute timeout |
+| `sanitize.ts` | `removeAnsiCodes()`, `truncateOutput()`, `sanitizePath()` | ANSI stripping, output truncation, path traversal prevention |
+| `transport.ts` | `startServer()` | Dual stdio/HTTP transport bootstrap via `--transport` and `--port` CLI flags |
+| `env.ts` | `getEnvOrArg()` | Prefer environment variables over CLI args for credentials |
+
 ### MCP Server Pattern (all servers follow this)
 
 Every server in `src/index.ts`:
 1. Parses CLI args for binary path (`process.argv.slice(2)`)
 2. Creates `McpServer` instance
 3. Registers one or more tools with Zod input schemas
-4. Spawns the security tool as a child process (or makes HTTP calls)
+4. Calls `secureSpawn()` from `mcp-shared` (or makes HTTP calls for API-based tools)
 5. Returns output as `{ content: [{ type: "text", text: output }] }`
-6. Connects via `StdioServerTransport`
+6. Calls `startServer(server)` from `mcp-shared` for transport
 
-### Three Execution Patterns
+### Two Execution Patterns
 
 | Pattern | Used By | Mechanism |
 |---------|---------|-----------|
-| `child_process.spawn` | nmap, ffuf, sqlmap, masscan, most tools | Simple stdout/stderr capture |
-| `node-pty` | httpx, nuclei, scoutsuite | Pseudo-terminal for tools with ANSI/colored output; strips ANSI codes before returning |
+| `secureSpawn` | All spawn-based tools (nmap, ffuf, httpx, nuclei, etc.) | Secure child process with stdin detached, buffer limits, timeout |
 | HTTP/axios | crtsh, http-headers-security, mobsf | Direct API calls, no binary spawn |
+
+**Note:** `node-pty` is no longer used. Go tools auto-suppress ANSI in pipe mode. Python tools use `removeAnsiCodes()` from `mcp-shared`.
 
 ### Config Generation
 
@@ -98,24 +124,31 @@ Every server in `src/index.ts`:
 
 ## Conventions
 
-- **Directory naming:** `<tool>-mcp/` (e.g., `nmap-mcp`, `httpx-mcp`)
+- **Directory naming:** `<tool>-mcp/` (e.g., `nmap-mcp`, `httpx-mcp`). Exception: `cero/`
 - **Tool function naming:** Most use `do-<tool>` (e.g., `do-nmap`, `do-ffuf`), some use bare tool name (`amass`, `httpx`, `crtsh`)
 - **TypeScript target:** ES2022, module: Node16, strict mode
-- **Core deps:** `@modelcontextprotocol/sdk`, `zod` (all servers); `node-pty` (interactive tools); `axios` (API-based tools)
-- **ANSI stripping:** Servers using `node-pty` include a `removeAnsiCodes()` helper
-- **Error handling:** Promise-based — resolve on exit code 0/undefined, reject otherwise
+- **Core deps:** `@modelcontextprotocol/sdk` ^1.17.2, `zod`, `mcp-shared` (all servers)
+- **ANSI stripping:** Import `removeAnsiCodes` from `mcp-shared` (only needed for Python tools)
+- **Path safety:** Use `sanitizePath()` from `mcp-shared` when handling user-supplied file paths
+- **Credential handling:** Use `getEnvOrArg()` from `mcp-shared` — prefers env vars over CLI args
+- **Error handling:** `secureSpawn` returns `{ stdout, stderr, exitCode }` — check exitCode !== 0
 - **Logging:** `console.error` for server status (stdout reserved for MCP protocol)
+- **Spawn stdin:** Always detached via `stdio: ['ignore', 'pipe', 'pipe']` — critical for ProjectDiscovery Go tools that block on pipe stdin
 
 ## Adding a New MCP Server
 
-1. Create `<tool>-mcp/` directory following existing structure
-2. Copy `tsconfig.json` from any existing server (they're identical)
-3. Create `package.json` with `@modelcontextprotocol/sdk` and `zod`
-4. Implement `src/index.ts` following the spawn/pty/API pattern appropriate for the tool
-5. Create `build.sh` that installs the tool, runs `npm install && npm run build`, and updates `mcp-config.json`
-6. Add entry to root `readme.md` tools table
-7. Add the `.gitignore` file to make sure bloated files are not commited.
-8. Create the MCP server `readme.md` file describing it's usage and setup.
+1. Build `mcp-shared` first: `cd mcp-shared && npm install && npm run build`
+2. Create `<tool>-mcp/` directory following existing structure
+3. Copy `tsconfig.json` from any existing server (they're identical)
+4. Create `package.json` with `@modelcontextprotocol/sdk` ^1.17.2, `zod`, and `"mcp-shared": "file:../mcp-shared"`
+5. Implement `src/index.ts`:
+   - Import `{ secureSpawn, startServer }` from `"mcp-shared"`
+   - Use `secureSpawn()` to run the tool (or axios for API-based tools)
+   - Call `await startServer(server)` in `main()`
+6. Create `build.sh` that installs the tool, runs `npm install && npm run build`, and updates `mcp-config.json`
+7. Add entry to root `readme.md` tools table
+8. Add the `.gitignore` file to make sure bloated files are not committed
+9. Create the MCP server `readme.md` file describing its usage and setup
 
 ## Requirements
 Use context7 for documentation

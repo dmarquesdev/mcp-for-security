@@ -1,9 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const mcp_js_1 = require("@modelcontextprotocol/sdk/server/mcp.js");
-const stdio_js_1 = require("@modelcontextprotocol/sdk/server/stdio.js");
 const zod_1 = require("zod");
-const child_process_1 = require("child_process");
+const mcp_shared_1 = require("mcp-shared");
 const args = process.argv.slice(2);
 if (args.length === 0) {
     console.error("Usage: masscan <masscan binary>");
@@ -25,41 +24,20 @@ server.tool("do-masscan", "Run masscan with specified target MASSCAN is a fast p
             --max-rate 
             `),
 }, async ({ target, port, masscan_args }) => {
-    const masscan = (0, child_process_1.spawn)(args[0], ["-p" + port, target, ...masscan_args]);
-    let output = '';
-    // Handle stdout
-    masscan.stdout.on('data', (data) => {
-        output += data.toString();
-    });
-    // Handle stderr
-    masscan.stderr.on('data', (data) => {
-        output += data.toString();
-    });
-    // Handle process completion
-    return new Promise((resolve, reject) => {
-        masscan.on('close', (code) => {
-            if (code === 0) {
-                resolve({
-                    content: [{
-                            type: "text",
-                            text: output + "\n masscan completed successfully"
-                        }]
-                });
-            }
-            else {
-                reject(new Error(`masscan exited with code ${code}`));
-            }
-        });
-        masscan.on('error', (error) => {
-            reject(new Error(`Failed to start masscan: ${error.message}`));
-        });
-    });
+    const result = await (0, mcp_shared_1.secureSpawn)(args[0], ["-p" + port, target, ...masscan_args]);
+    if (result.exitCode !== 0) {
+        throw new Error(`masscan exited with code ${result.exitCode}:\n${result.stderr}`);
+    }
+    return {
+        content: [{
+                type: "text",
+                text: (result.stdout + result.stderr) || "No output from masscan."
+            }]
+    };
 });
-// Start the server
 async function main() {
-    const transport = new stdio_js_1.StdioServerTransport();
-    await server.connect(transport);
-    console.error("Masscan MCP Server running on stdio");
+    await (0, mcp_shared_1.startServer)(server);
+    console.error("masscan MCP Server running");
 }
 main().catch((error) => {
     console.error("Fatal error in main():", error);
