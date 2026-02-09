@@ -25,7 +25,7 @@ const server = new McpServer({
 // Define the scanFile tool
 
 server.tool(
-    "scanFile",
+    "do-mobsf-scan",
     "Scan a file that has already been uploaded to MobSF. This tool analyzes the uploaded mobile application for security vulnerabilities and provides a comprehensive security assessment report.",
     {
         hash: z.string().describe("Hash of the file to scan"),
@@ -44,7 +44,7 @@ server.tool(
 
 
 server.tool(
-    "uploadFile",
+    "do-mobsf-upload",
     "Upload a mobile application file (APK, IPA, or APPX) to MobSF for security analysis. This is the first step before scanning and must be done prior to using other analysis functions.",
     {
         file: z.string().describe("Upload file path"),
@@ -62,7 +62,7 @@ server.tool(
 
 
 server.tool(
-    "getScanLogs",
+    "do-mobsf-scan-logs",
     "Retrieve detailed scan logs for a previously analyzed mobile application using its hash value. These logs contain information about the scanning process and any issues encountered.",
     {
         hash: z.string().describe("Hash file to getting scan logs"),
@@ -79,7 +79,7 @@ server.tool(
 );
 
 server.tool(
-    "getJsonReport",
+    "do-mobsf-json-report",
     "Generate and retrieve a comprehensive security analysis report in JSON format for a scanned mobile application. This report includes detailed findings about security vulnerabilities, permissions, API calls, and other security-relevant information.",
     {
         hash: z.string().describe("Hash file to getting scan logs"),
@@ -96,7 +96,7 @@ server.tool(
 );
 
 server.tool(
-    "getRecentScans",
+    "do-mobsf-recent-scans",
     "Retrieve a list of recently performed security scans on the MobSF server, showing mobile applications that have been analyzed, their statuses, and basic scan information.",
     {
         page: z.number().describe("Page number for result"),

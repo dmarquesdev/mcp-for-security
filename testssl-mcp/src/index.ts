@@ -2,13 +2,9 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { existsSync, statSync } from "fs";
 import { join } from "path";
-import { secureSpawn, removeAnsiCodes, sanitizePath, startServer } from "mcp-shared";
+import { secureSpawn, removeAnsiCodes, sanitizePath, startServer, getToolArgs } from "mcp-shared";
 
-const args = process.argv.slice(2);
-if (args.length === 0) {
-    console.error("Usage: testssl-mcp <path-to-testssl.sh>");
-    process.exit(1);
-}
+const args = getToolArgs("testssl-mcp <path-to-testssl.sh>");
 
 // If path is the testssl.sh directory (e.g. ~/tools/testssl.sh), run the script inside it
 function resolveTestsslPath(rawPath: string): string {

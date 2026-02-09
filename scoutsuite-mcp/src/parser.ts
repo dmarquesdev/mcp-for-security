@@ -19,15 +19,15 @@ interface ScoutSuiteResults {
 type FullReportResult = Record<string, Findings>;
 type SummaryReportResult = Record<string, string[]>;
 
-function getFindingsFromScoutSuite(
+export function getFindingsFromScoutSuite(
     filePath: string,
     full_report: true
 ): FullReportResult;
-function getFindingsFromScoutSuite(
+export function getFindingsFromScoutSuite(
     filePath: string,
     full_report: false
 ): SummaryReportResult;
-function getFindingsFromScoutSuite(
+export function getFindingsFromScoutSuite(
     filePath: string,
     full_report: boolean
 ): FullReportResult | SummaryReportResult {
@@ -64,11 +64,8 @@ function getFindingsFromScoutSuite(
     return servicesWithFindings;
 }
 
-function extractReportJsPath(output: string): string | null {
+export function extractReportJsPath(output: string): string | null {
     const regex = /Saving data to (scoutsuite-report\/scoutsuite-results\/scoutsuite_results_[\w\-]+\.js)/;
     const match = output.match(regex);
     return match ? match[1] : null;
 }
-
-
-module.exports = { getFindingsFromScoutSuite, extractReportJsPath };

@@ -1,21 +1,16 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { secureSpawn, startServer } from "mcp-shared";
+import { secureSpawn, startServer, getToolArgs, formatToolResult } from "mcp-shared";
 
-const args = process.argv.slice(2);
-if (args.length === 0) {
-    console.error("Usage: subfinder-mcp <subfinder binary>");
-    process.exit(1);
-}
+const args = getToolArgs("subfinder-mcp <subfinder binary>");
 
-// Create server instance
 const server = new McpServer({
     name: "subfinder",
     version: "1.0.0",
 });
 
 server.tool(
-    "subfinder",
+    "do-subfinder",
     "Fast passive subdomain enumeration tool that discovers valid subdomains using online passive sources.",
     {
         domain: z.string().describe("Target domain to enumerate subdomains for (e.g., example.com)"),
@@ -35,7 +30,6 @@ server.tool(
         verbose: z.boolean().optional().describe("Show verbose output with additional details"),
     },
     async ({ domain, sources, exclude_sources, all, recursive, json, active, collect_sources, ip, timeout, rate_limit, resolvers, match, filter, verbose }) => {
-
         const subfinderArgs = ["-d", domain, "-silent"];
 
         if (sources && sources.length > 0) subfinderArgs.push("-s", sources.join(","));
@@ -54,21 +48,10 @@ server.tool(
         if (verbose) subfinderArgs.push("-v");
 
         const result = await secureSpawn(args[0], subfinderArgs);
-
-        if (result.exitCode !== 0) {
-            throw new Error(`subfinder exited with code ${result.exitCode}:\n${result.stderr}`);
-        }
-
-        return {
-            content: [{
-                type: "text" as const,
-                text: result.stdout
-            }]
-        };
+        return formatToolResult(result, { toolName: "subfinder" });
     },
 );
 
-// Start the server
 async function main() {
     await startServer(server);
     console.error("subfinder MCP Server running");

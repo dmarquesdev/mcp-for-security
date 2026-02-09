@@ -169,10 +169,53 @@ WordPress vulnerability scanner for detecting outdated plugins, themes, and comm
 All servers depend on a shared utility library that provides:
 
 - **`secureSpawn()`** — Secure child process spawning with stdin detached (`stdio: ['ignore', 'pipe', 'pipe']`), 50MB output buffer limit, and 5-minute timeout
+- **`getToolArgs(usage, minArgs?)`** — Standardized CLI argument parsing that filters out framework flags (`--transport`, `--port`) and validates minimum positional args
+- **`formatToolResult(result, options)`** — Consistent MCP response formatting: throws on nonzero exit, composes stdout/stderr, strips ANSI codes (optional), handles empty output
 - **`sanitizePath()`** — Path traversal prevention for user-supplied file paths
 - **`removeAnsiCodes()`** — ANSI escape code stripping for clean output
+- **`truncateOutput()`** — Output length limiting with truncation notice
 - **`startServer()`** — Dual transport bootstrap (stdio default, HTTP via `--transport http --port N`)
 - **`getEnvOrArg()`** — Credential helper that prefers environment variables over CLI arguments
+
+### Standard Server Pattern
+
+Every spawn-based server follows this pattern:
+
+```typescript
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { z } from "zod";
+import { secureSpawn, startServer, getToolArgs, formatToolResult } from "mcp-shared";
+
+const args = getToolArgs("my-tool-mcp <binary path>");
+
+const server = new McpServer({ name: "my-tool", version: "1.0.0" });
+
+server.tool(
+    "do-my-tool",                    // Convention: do-<toolname>
+    "Tool description",
+    { target: z.string().describe("Target") },
+    async ({ target }) => {
+        const result = await secureSpawn(args[0], [target]);
+        return formatToolResult(result, { toolName: "my-tool" });
+    },
+);
+
+async function main() { await startServer(server); }
+main().catch((e) => { console.error("Fatal:", e); process.exit(1); });
+```
+
+### Build Script Pattern
+
+Each server has a thin `build.sh` that sources `scripts/build-common.sh`:
+
+```bash
+#!/bin/bash
+set -e
+go install github.com/example/tool@latest    # Tool-specific install
+BIN_ARGS=("$(which tool)")                    # Args passed after index.js
+SERVICE_PATH=$(pwd)
+source "$SERVICE_PATH/../scripts/build-common.sh"  # Shared npm build + config
+```
 
 ### HTTP Transport
 

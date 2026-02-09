@@ -1,3 +1,5 @@
 #!/bin/bash
-
-npm install && npm run build
+set -e
+BIN_ARGS=("$(which sslscan)")
+SERVICE_PATH=$(pwd)
+source "$SERVICE_PATH/../scripts/build-common.sh"

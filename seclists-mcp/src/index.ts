@@ -2,14 +2,9 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { readdir, readFile, stat } from "fs/promises";
 import { join, relative } from "path";
-import { startServer } from "mcp-shared";
+import { startServer, getToolArgs } from "mcp-shared";
 
-const args = process.argv.slice(2);
-if (args.length === 0) {
-    console.error("Usage: seclists-mcp <seclists-directory-path>");
-    process.exit(1);
-}
-
+const args = getToolArgs("seclists-mcp <seclists-directory-path>");
 const seclistsPath = args[0];
 
 const server = new McpServer({

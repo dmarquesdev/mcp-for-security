@@ -46,7 +46,7 @@ async function findMatchingAddedHeaders(headers: string[]): Promise<string[]> {
 }
 
 server.tool(
-    "analyze-http-header",
+    "do-analyze-http-headers",
     "Perform security analysis of HTTP response headers for a web application. This tool examines HTTP headers against OWASP security best practices, identifying both potentially dangerous headers that should be removed and recommended security headers that are missing. Results include specific recommendations for improving security posture.",
     {
         target: z.string().describe("Target URL to analyze (e.g., https://example.com). The tool will make a request to this URL and evaluate its HTTP response headers for security issues."),

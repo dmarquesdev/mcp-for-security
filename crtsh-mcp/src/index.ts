@@ -10,7 +10,7 @@ const server = new McpServer({
 });
 
 server.tool(
-    "crtsh",
+    "do-crtsh",
     "Discovers subdomains from SSL certificate logs",
     {
         target: z.string().describe("Target domain to analyze (e.g., example.com)."),

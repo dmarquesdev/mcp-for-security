@@ -1,12 +1,8 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { secureSpawn, startServer, removeAnsiCodes } from "mcp-shared";
+import { secureSpawn, startServer, getToolArgs, formatToolResult } from "mcp-shared";
 
-const args = process.argv.slice(2);
-if (args.length !== 2) {
-    console.error("Usage: commix-mcp [python path] [commix.py path]");
-    process.exit(1);
-}
+const args = getToolArgs("commix-mcp [python path] [commix.py path]", 2);
 
 const server = new McpServer({
     name: "commix",
@@ -15,35 +11,17 @@ const server = new McpServer({
 
 server.tool(
     "do-commix",
-    "Run Commix to detect and exploit command injection vulnerabilities",
+    "Run Commix to test for command injection issues",
     {
-        url: z.string().url().describe("Target URL to test for command injection")
+        url: z.string().url().describe("Target URL to test")
     },
     async ({ url }) => {
-        const baseArgs = [args[1], "-u", url];
-        const allArgs = [...baseArgs, url];
-
+        const allArgs = [args[1], "-u", url, url];
         const result = await secureSpawn(args[0], allArgs);
-
-        if (result.exitCode !== 0) {
-            return {
-                content: [{
-                    type: "text" as const,
-                    text: removeAnsiCodes(`commix exited with code ${result.exitCode}\n${result.stderr}`)
-                }]
-            };
-        }
-
-        return {
-            content: [{
-                type: "text" as const,
-                text: removeAnsiCodes(result.stdout)
-            }]
-        };
+        return formatToolResult(result, { toolName: "commix", stripAnsi: true });
     },
 );
 
-// Start the server
 async function main() {
     await startServer(server);
 }

@@ -1,14 +1,9 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { secureSpawn, startServer } from "mcp-shared";
+import { secureSpawn, startServer, getToolArgs, formatToolResult } from "mcp-shared";
 
-const args = process.argv.slice(2);
-if (args.length === 0) {
-    console.error("Usage: katana-mcp <katana binary>");
-    process.exit(1);
-}
+const args = getToolArgs("katana-mcp <katana binary>");
 
-// Create server instance
 const server = new McpServer({
     name: "katana",
     version: "1.0.0",
@@ -27,56 +22,26 @@ server.tool(
         strategy: z.enum(["depth-first", "breadth-first"]).optional().describe("Crawling strategy to use: 'depth-first' or 'breadth-first' (default is depth-first)."),
         headless: z.boolean().optional().describe("Enable headless browser-based hybrid crawling (experimental)."),
         system_chrome: z.boolean().optional().describe("Use the locally installed Chrome browser instead of the built-in one."),
-        show_brwoser: z.boolean().optional().describe("Show the browser window even in headless mode (for debugging/visual inspection)."),
+        show_browser: z.boolean().optional().describe("Show the browser window even in headless mode (for debugging/visual inspection)."),
     },
-    async ({ target, exclude, depth, js_crawl, jsluice, headers, strategy, headless, system_chrome, show_brwoser }) => {
-
+    async ({ target, exclude, depth, js_crawl, jsluice, headers, strategy, headless, system_chrome, show_browser }) => {
         const katanaArgs = ["-u", target.join(","), "-silent"];
 
-        if (exclude && exclude.length > 0) {
-            katanaArgs.push("-exclude", exclude.join(","));
-        }
-        if (depth !== undefined) {
-            katanaArgs.push("-d", depth.toString());
-        }
-        if (js_crawl) {
-            katanaArgs.push("-jc");
-        }
-        if (jsluice) {
-            katanaArgs.push("-jsl");
-        }
-        if (headers && headers.length > 0) {
-            headers.forEach(header => katanaArgs.push("-H", header));
-        }
-        if (strategy) {
-            katanaArgs.push("-strategy", strategy);
-        }
-        if (headless) {
-            katanaArgs.push("-headless");
-        }
-        if (system_chrome) {
-            katanaArgs.push("-system-chrome");
-        }
-        if (show_brwoser) {
-            katanaArgs.push("-show-browser");
-        }
+        if (exclude && exclude.length > 0) katanaArgs.push("-exclude", exclude.join(","));
+        if (depth !== undefined) katanaArgs.push("-d", depth.toString());
+        if (js_crawl) katanaArgs.push("-jc");
+        if (jsluice) katanaArgs.push("-jsl");
+        if (headers && headers.length > 0) headers.forEach(header => katanaArgs.push("-H", header));
+        if (strategy) katanaArgs.push("-strategy", strategy);
+        if (headless) katanaArgs.push("-headless");
+        if (system_chrome) katanaArgs.push("-system-chrome");
+        if (show_browser) katanaArgs.push("-show-browser");
 
         const result = await secureSpawn(args[0], katanaArgs);
-
-        if (result.exitCode !== 0) {
-            throw new Error(`katana exited with code ${result.exitCode}:\n${result.stderr}`);
-        }
-
-        return {
-            content: [{
-                type: "text" as const,
-                text: result.stdout
-            }]
-        };
+        return formatToolResult(result, { toolName: "katana" });
     },
 );
 
-// Start the server
 async function main() {
     await startServer(server);
     console.error("katana MCP Server running");

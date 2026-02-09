@@ -2,15 +2,9 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { readFile, access, readdir, writeFile, unlink, stat } from "fs/promises";
 import { join, resolve } from "path";
-import { secureSpawn, sanitizePath, startServer } from "mcp-shared";
+import { secureSpawn, sanitizePath, startServer, getToolArgs } from "mcp-shared";
 
-// Get gowitness binary path
-const args = process.argv.slice(2);
-if (args.length === 0) {
-    console.error("Usage: gowitness-mcp <gowitness binary>");
-    process.exit(1);
-}
-
+const args = getToolArgs("gowitness-mcp <gowitness binary>");
 const gowitnessPath = args[0];
 
 // Create MCP Server

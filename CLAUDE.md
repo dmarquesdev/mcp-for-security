@@ -98,15 +98,17 @@ All 28 servers import from the `mcp-shared` local package:
 | `sanitize.ts` | `removeAnsiCodes()`, `truncateOutput()`, `sanitizePath()` | ANSI stripping, output truncation, path traversal prevention |
 | `transport.ts` | `startServer()` | Dual stdio/HTTP transport bootstrap via `--transport` and `--port` CLI flags |
 | `env.ts` | `getEnvOrArg()` | Prefer environment variables over CLI args for credentials |
+| `args.ts` | `getToolArgs()` | Standardized CLI arg parsing — strips framework flags, validates min args, exits with usage on error |
+| `result.ts` | `formatToolResult()` | Standardized MCP response — throws on nonzero exit, composes stdout/stderr, optional ANSI stripping |
 
 ### MCP Server Pattern (all servers follow this)
 
 Every server in `src/index.ts`:
-1. Parses CLI args for binary path (`process.argv.slice(2)`)
+1. Parses CLI args via `getToolArgs(usage, minArgs?)` from `mcp-shared` — strips `--transport`/`--port` flags automatically
 2. Creates `McpServer` instance
-3. Registers one or more tools with Zod input schemas
+3. Registers one or more tools with Zod input schemas (naming convention: `do-<tool>`)
 4. Calls `secureSpawn()` from `mcp-shared` (or makes HTTP calls for API-based tools)
-5. Returns output as `{ content: [{ type: "text", text: output }] }`
+5. Returns output via `formatToolResult(result, { toolName, includeStderr?, stripAnsi? })` — standardized error/output handling
 6. Calls `startServer(server)` from `mcp-shared` for transport
 
 ### Two Execution Patterns
@@ -125,13 +127,14 @@ Every server in `src/index.ts`:
 ## Conventions
 
 - **Directory naming:** `<tool>-mcp/` (e.g., `nmap-mcp`, `httpx-mcp`). Exception: `cero/`
-- **Tool function naming:** Most use `do-<tool>` (e.g., `do-nmap`, `do-ffuf`), some use bare tool name (`amass`, `httpx`, `crtsh`)
+- **Tool function naming:** All use `do-<tool>` (e.g., `do-nmap`, `do-ffuf`, `do-httpx`, `do-amass`)
 - **TypeScript target:** ES2022, module: Node16, strict mode
 - **Core deps:** `@modelcontextprotocol/sdk` ^1.17.2, `zod`, `mcp-shared` (all servers)
 - **ANSI stripping:** Import `removeAnsiCodes` from `mcp-shared` (only needed for Python tools)
 - **Path safety:** Use `sanitizePath()` from `mcp-shared` when handling user-supplied file paths
 - **Credential handling:** Use `getEnvOrArg()` from `mcp-shared` — prefers env vars over CLI args
-- **Error handling:** `secureSpawn` returns `{ stdout, stderr, exitCode }` — check exitCode !== 0
+- **Error handling:** Use `formatToolResult()` — automatically throws on nonzero exitCode with stderr details
+- **CLI args:** Use `getToolArgs()` instead of manual `process.argv.slice(2)` parsing
 - **Logging:** `console.error` for server status (stdout reserved for MCP protocol)
 - **Spawn stdin:** Always detached via `stdio: ['ignore', 'pipe', 'pipe']` — critical for ProjectDiscovery Go tools that block on pipe stdin
 
@@ -142,10 +145,13 @@ Every server in `src/index.ts`:
 3. Copy `tsconfig.json` from any existing server (they're identical)
 4. Create `package.json` with `@modelcontextprotocol/sdk` ^1.17.2, `zod`, and `"mcp-shared": "file:../mcp-shared"`
 5. Implement `src/index.ts`:
-   - Import `{ secureSpawn, startServer }` from `"mcp-shared"`
-   - Use `secureSpawn()` to run the tool (or axios for API-based tools)
-   - Call `await startServer(server)` in `main()`
-6. Create `build.sh` that installs the tool, runs `npm install && npm run build`, and updates `mcp-config.json`
+ - Import `{ secureSpawn, startServer, getToolArgs, formatToolResult }` from `"mcp-shared"`
+ - Use `getToolArgs()` to parse CLI args (strips `--transport`/`--port` automatically)
+ - Name tools with `do-<tool>` convention
+ - Use `secureSpawn()` to run the tool (or axios for API-based tools)
+ - Use `formatToolResult()` for standardized response formatting
+ - Call `await startServer(server)` in `main()`
+6. Create `build.sh`: set `BIN_ARGS`, `SERVICE_PATH`, then `source scripts/build-common.sh`
 7. Add entry to root `readme.md` tools table
 8. Add the `.gitignore` file to make sure bloated files are not committed
 9. Create the MCP server `readme.md` file describing its usage and setup

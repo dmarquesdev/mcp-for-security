@@ -1,14 +1,9 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { secureSpawn, startServer } from "mcp-shared";
+import { secureSpawn, startServer, getToolArgs, formatToolResult } from "mcp-shared";
 
-const args = process.argv.slice(2);
-if (args.length === 0) {
-    console.error("Usage: cero-mcp <cero binary>");
-    process.exit(1);
-}
+const args = getToolArgs("cero-mcp <cero binary>");
 
-// Create server instance
 const server = new McpServer({
     name: "cero",
     version: "1.0.0",
@@ -25,35 +20,15 @@ server.tool(
     },
     async ({ target, concurrency, ports, timeOut }) => {
         const ceroArgs = [target];
-
-        if (concurrency) {
-            ceroArgs.push("-c", concurrency.toString());
-        }
-
-        if (ports && ports.length > 0) {
-            ceroArgs.push("-p", ports.join(","));
-        }
-
-        if (timeOut) {
-            ceroArgs.push("-t", timeOut.toString());
-        }
+        if (concurrency) ceroArgs.push("-c", concurrency.toString());
+        if (ports && ports.length > 0) ceroArgs.push("-p", ports.join(","));
+        if (timeOut) ceroArgs.push("-t", timeOut.toString());
 
         const result = await secureSpawn(args[0], ceroArgs);
-
-        if (result.exitCode !== 0) {
-            throw new Error(`cero exited with code ${result.exitCode}:\n${result.stderr}`);
-        }
-
-        return {
-            content: [{
-                type: "text" as const,
-                text: result.stdout
-            }]
-        };
+        return formatToolResult(result, { toolName: "cero" });
     },
 );
 
-// Start the server
 async function main() {
     await startServer(server);
     console.error("cero MCP Server running");
