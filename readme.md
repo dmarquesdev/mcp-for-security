@@ -263,12 +263,29 @@ Build the shared library first:
 cd mcp-shared && npm install && npm run build
 ```
 
+### Testing
+
+The project includes a comprehensive test suite (~300 tests) that runs **without any security tools installed**. Server tests use `InMemoryTransport` with mock spawn to validate tool registration, Zod schemas, argument construction, and response formatting through the real MCP protocol.
+
+```bash
+# Run all tests (mcp-shared + all 28 servers + integration)
+npm test
+
+# Run tests for a single server
+cd nmap-mcp && npm run build && npm test
+
+# Run only mcp-shared unit tests
+cd mcp-shared && npm run build && npm test
+```
+
+Test utilities are provided by the `test-helpers/` package. See `CLAUDE.md` for details on writing new server tests.
+
 ### Contributing
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes (see `CLAUDE.md` for architecture details and conventions)
-4. Ensure your server builds: `npm install && npm run build`
+4. Ensure your server builds and tests pass: `npm install && npm run build && npm test`
 5. Submit a pull request
 
 ## Installation

@@ -66,7 +66,88 @@ All servers support both stdio and HTTP transport via `startServer()` from `mcp-
 
 ## Testing
 
-No automated test suite exists. Testing is manual via MCP client integration.
+### Run all tests
+```bash
+npm test
+```
+This executes `scripts/test-all.sh`, which builds `mcp-shared` and `test-helpers`, then runs tests for all 28 servers plus integration tests. No security tools required — all server tests use mock spawn.
+
+### Run tests for a single server
+```bash
+cd <tool>-mcp && npm install && npm run build && npm test
+```
+Requires `mcp-shared` and `test-helpers` to be built first.
+
+### Run mcp-shared tests only
+```bash
+cd mcp-shared && npm run build && npm test
+```
+
+### Run integration tests only
+```bash
+cd test-integration && npm install && npm run build && npm test
+```
+
+### Test architecture (three tiers)
+
+| Tier | Location | What it tests | Mechanism |
+|------|----------|---------------|-----------|
+| Unit | `mcp-shared/src/__tests__/` | All 6 shared modules (spawn, args, env, sanitize, result, transport) | Real commands (`echo`, `node -e`) for spawn; `process.argv`/`process.env` manipulation for args/env |
+| Server | `<tool>-mcp/src/__tests__/` | Tool registration, Zod schemas, arg construction, response formatting | `InMemoryTransport` + mock `secureSpawn` — no real security tools needed |
+| Integration | `test-integration/src/` | Full MCP protocol cycle with real `secureSpawn` | `InMemoryTransport` with real `echo` command |
+
+### Test helpers (`test-helpers/`)
+
+Shared test utilities used by all server tests:
+
+| Export | Purpose |
+|--------|---------|
+| `createTestServer(name)` | Creates `McpServer` + `Client` connected via `InMemoryTransport` with `connect()`/`cleanup()` lifecycle |
+| `createMockSpawn(options?)` | Mock `secureSpawn` factory with call recording — captures binary, args, and options per call |
+| `assertToolExists(client, name)` | Verify a tool is registered via `client.listTools()` |
+| `assertToolCallSucceeds(client, name, args)` | Call a tool and assert no error |
+| `assertToolCallFails(client, name, args)` | Call a tool and assert `isError: true` |
+| `getResultText(result)` | Extract text content from MCP tool result |
+
+### Writing a new server test
+
+Server tests recreate the tool registration (same Zod schema and arg construction as `src/index.ts`) but inject a mock spawn instead of `secureSpawn`. This avoids importing the server module directly (which has side effects from `getToolArgs()` and `startServer()`).
+
+```typescript
+import { describe, it, afterEach } from "node:test";
+import assert from "node:assert/strict";
+import { z } from "zod";
+import { createTestServer, createMockSpawn, assertToolExists, getResultText } from "test-helpers";
+import { formatToolResult } from "mcp-shared";
+
+describe("my-tool-mcp", () => {
+    const mock = createMockSpawn();
+    const harness = createTestServer("my-tool");
+
+    // Mirror the tool registration from src/index.ts
+    harness.server.tool("do-my-tool", "Description", {
+        target: z.string(),
+    }, async ({ target }) => {
+        const result = await mock.spawn("my-tool", [target]);
+        return formatToolResult(result, { toolName: "my-tool" });
+    });
+
+    afterEach(() => mock.reset());
+
+    it("registers the do-my-tool tool", async () => {
+        await harness.connect();
+        await assertToolExists(harness.client, "do-my-tool");
+        await harness.cleanup();
+    });
+
+    it("passes target to spawn", async () => {
+        await harness.connect();
+        await harness.client.callTool({ name: "do-my-tool", arguments: { target: "example.com" } });
+        assert.deepStrictEqual(mock.lastCall()?.args, ["example.com"]);
+        await harness.cleanup();
+    });
+});
+```
 
 ## Architecture
 
@@ -155,6 +236,9 @@ Every server in `src/index.ts`:
 7. Add entry to root `readme.md` tools table
 8. Add the `.gitignore` file to make sure bloated files are not committed
 9. Create the MCP server `readme.md` file describing its usage and setup
+10. Add tests in `src/__tests__/<tool>.test.ts` using `test-helpers` (see Testing section above)
+11. Add to `package.json`: `"test": "node --test 'build/__tests__/*.test.js'"` in scripts, `"test-helpers": "file:../test-helpers"` in devDependencies
+12. Verify with `npm run build && npm test`
 
 ## Requirements
 Use context7 for documentation
