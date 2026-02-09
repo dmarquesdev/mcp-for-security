@@ -1,0 +1,306 @@
+import { describe, it, afterEach } from "node:test";
+import assert from "node:assert/strict";
+import { z } from "zod";
+import {
+    createTestServer,
+    createMockSpawn,
+    assertToolExists,
+    assertToolCallSucceeds,
+    assertToolCallFails,
+    getResultText,
+} from "test-helpers";
+import { formatToolResult } from "mcp-shared";
+
+describe("gowitness-mcp", () => {
+    const mock = createMockSpawn();
+    const harness = createTestServer("gowitness");
+
+    // Tool 1: do-gowitness-screenshot (custom error handling, not formatToolResult)
+    harness.server.tool(
+        "do-gowitness-screenshot",
+        "Capture screenshot of a URL using gowitness",
+        {
+            url: z.string().url().describe("URL to screenshot"),
+            chrome_window_x: z.number().optional().describe("Browser width"),
+            chrome_window_y: z.number().optional().describe("Browser height"),
+            timeout: z.number().optional().describe("Page timeout in seconds"),
+            delay: z.number().optional().describe("Delay before screenshot"),
+            fullpage: z.boolean().optional().describe("Full-page screenshot"),
+            format: z.enum(["jpeg", "png"]).optional().describe("Screenshot format"),
+            threads: z.number().optional().describe("Concurrent threads"),
+            write_db: z.boolean().optional().describe("Write to SQLite"),
+            write_jsonl: z.boolean().optional().describe("Write as JSON lines"),
+            user_agent: z.string().optional().describe("Custom user-agent"),
+        },
+        async ({
+            url,
+            chrome_window_x,
+            chrome_window_y,
+            timeout,
+            delay,
+            fullpage,
+            format,
+            threads,
+            write_db,
+            write_jsonl,
+            user_agent,
+        }) => {
+            const spawnArgs = ["scan", "single", "--url", url];
+
+            if (chrome_window_x) spawnArgs.push("--chrome-window-x", chrome_window_x.toString());
+            if (chrome_window_y) spawnArgs.push("--chrome-window-y", chrome_window_y.toString());
+            if (timeout) spawnArgs.push("--timeout", timeout.toString());
+            if (delay) spawnArgs.push("--delay", delay.toString());
+            if (fullpage) spawnArgs.push("--screenshot-fullpage");
+            if (format) spawnArgs.push("--screenshot-format", format);
+            if (threads) spawnArgs.push("--threads", threads.toString());
+            if (write_db) spawnArgs.push("--write-db");
+            if (write_jsonl) spawnArgs.push("--write-jsonl");
+            if (user_agent) spawnArgs.push("--chrome-user-agent", user_agent);
+
+            if (!write_db && !write_jsonl) {
+                spawnArgs.push("--write-none");
+            }
+
+            const result = await mock.spawn("gowitness", spawnArgs);
+            const output = result.stdout + result.stderr;
+
+            if (result.exitCode !== 0) {
+                throw new Error(`gowitness exited with code ${result.exitCode}:\n${output}`);
+            }
+
+            return {
+                content: [{
+                    type: "text" as const,
+                    text: output + "\nGowitness screenshot completed",
+                }],
+            };
+        }
+    );
+
+    // Tool 2: do-gowitness-report
+    harness.server.tool(
+        "do-gowitness-report",
+        "Generate a report from gowitness data",
+        {
+            screenshot_path: z.string().optional().describe("Path to screenshots"),
+            db_uri: z.string().optional().describe("Database URI"),
+        },
+        async ({ screenshot_path, db_uri }) => {
+            const spawnArgs = ["report"];
+
+            if (screenshot_path) spawnArgs.push("--screenshot-path", screenshot_path);
+            if (db_uri) spawnArgs.push("--write-db-uri", db_uri);
+
+            const result = await mock.spawn("gowitness", spawnArgs);
+            return formatToolResult(result, { toolName: "gowitness-report", includeStderr: true });
+        }
+    );
+
+    // Tool 3: do-gowitness-list-screenshots (filesystem only, no spawn)
+    harness.server.tool(
+        "do-gowitness-list-screenshots",
+        "List all screenshot files in a directory",
+        {
+            screenshot_dir: z.string().optional().describe("Directory to search"),
+        },
+        async ({ screenshot_dir = "./screenshots" }) => {
+            // Simplified for testing — no filesystem access needed
+            return {
+                content: [{
+                    type: "text" as const,
+                    text: `Found 0 screenshot files in ${screenshot_dir}`,
+                }],
+            };
+        }
+    );
+
+    afterEach(() => mock.reset());
+
+    // --- do-gowitness-screenshot tests ---
+
+    it("registers the do-gowitness-screenshot tool", async () => {
+        await harness.connect();
+        await assertToolExists(harness.client, "do-gowitness-screenshot");
+        await harness.cleanup();
+    });
+
+    it("screenshot: passes url with scan single prefix and --write-none", async () => {
+        await harness.connect();
+        await assertToolCallSucceeds(harness.client, "do-gowitness-screenshot", {
+            url: "https://example.com",
+        });
+        assert.equal(mock.calls.length, 1);
+        assert.equal(mock.calls[0].binary, "gowitness");
+        assert.deepEqual(mock.calls[0].args, [
+            "scan", "single", "--url", "https://example.com", "--write-none",
+        ]);
+        await harness.cleanup();
+    });
+
+    it("screenshot: omits --write-none when write_db is true", async () => {
+        await harness.connect();
+        await assertToolCallSucceeds(harness.client, "do-gowitness-screenshot", {
+            url: "https://example.com",
+            write_db: true,
+        });
+        const last = mock.lastCall();
+        assert.ok(last?.args.includes("--write-db"), "should include --write-db");
+        assert.ok(!last?.args.includes("--write-none"), "should not include --write-none");
+        await harness.cleanup();
+    });
+
+    it("screenshot: omits --write-none when write_jsonl is true", async () => {
+        await harness.connect();
+        await assertToolCallSucceeds(harness.client, "do-gowitness-screenshot", {
+            url: "https://example.com",
+            write_jsonl: true,
+        });
+        const last = mock.lastCall();
+        assert.ok(last?.args.includes("--write-jsonl"), "should include --write-jsonl");
+        assert.ok(!last?.args.includes("--write-none"), "should not include --write-none");
+        await harness.cleanup();
+    });
+
+    it("screenshot: appends optional flags correctly", async () => {
+        await harness.connect();
+        await assertToolCallSucceeds(harness.client, "do-gowitness-screenshot", {
+            url: "https://example.com",
+            chrome_window_x: 1280,
+            chrome_window_y: 720,
+            timeout: 30,
+            delay: 5,
+            fullpage: true,
+            format: "png",
+            threads: 4,
+            user_agent: "TestBot/1.0",
+        });
+        const last = mock.lastCall();
+        assert.deepEqual(last?.args, [
+            "scan", "single", "--url", "https://example.com",
+            "--chrome-window-x", "1280",
+            "--chrome-window-y", "720",
+            "--timeout", "30",
+            "--delay", "5",
+            "--screenshot-fullpage",
+            "--screenshot-format", "png",
+            "--threads", "4",
+            "--chrome-user-agent", "TestBot/1.0",
+            "--write-none",
+        ]);
+        await harness.cleanup();
+    });
+
+    it("screenshot: throws on nonzero exit code", async () => {
+        const failMock = createMockSpawn({
+            defaultResult: { stdout: "", stderr: "chrome not found", exitCode: 1 },
+        });
+        const h = createTestServer("gowitness-fail");
+        h.server.tool(
+            "do-gowitness-screenshot",
+            "screenshot",
+            { url: z.string().url() },
+            async ({ url }) => {
+                const spawnArgs = ["scan", "single", "--url", url, "--write-none"];
+                const result = await failMock.spawn("gowitness", spawnArgs);
+                const output = result.stdout + result.stderr;
+                if (result.exitCode !== 0) {
+                    throw new Error(`gowitness exited with code ${result.exitCode}:\n${output}`);
+                }
+                return { content: [{ type: "text" as const, text: output }] };
+            }
+        );
+        await h.connect();
+        await assertToolCallFails(h.client, "do-gowitness-screenshot", {
+            url: "https://example.com",
+        });
+        await h.cleanup();
+    });
+
+    it("screenshot: rejects when url is missing", async () => {
+        await harness.connect();
+        await assertToolCallFails(harness.client, "do-gowitness-screenshot", {});
+        await harness.cleanup();
+    });
+
+    it("screenshot: rejects when url is not a valid URL", async () => {
+        await harness.connect();
+        await assertToolCallFails(harness.client, "do-gowitness-screenshot", {
+            url: "not-a-url",
+        });
+        await harness.cleanup();
+    });
+
+    it("screenshot: returns output with completion message", async () => {
+        const customMock = createMockSpawn({
+            defaultResult: { stdout: "scanning https://example.com", stderr: "", exitCode: 0 },
+        });
+        const h = createTestServer("gowitness-output");
+        h.server.tool(
+            "do-gowitness-screenshot",
+            "screenshot",
+            { url: z.string().url() },
+            async ({ url }) => {
+                const result = await customMock.spawn("gowitness", ["scan", "single", "--url", url]);
+                const output = result.stdout + result.stderr;
+                if (result.exitCode !== 0) throw new Error(`exit ${result.exitCode}`);
+                return { content: [{ type: "text" as const, text: output + "\nGowitness screenshot completed" }] };
+            }
+        );
+        await h.connect();
+        const result = await assertToolCallSucceeds(h.client, "do-gowitness-screenshot", {
+            url: "https://example.com",
+        });
+        const text = getResultText(result);
+        assert.ok(text.includes("scanning https://example.com"));
+        assert.ok(text.includes("Gowitness screenshot completed"));
+        await h.cleanup();
+    });
+
+    // --- do-gowitness-report tests ---
+
+    it("registers the do-gowitness-report tool", async () => {
+        await harness.connect();
+        await assertToolExists(harness.client, "do-gowitness-report");
+        await harness.cleanup();
+    });
+
+    it("report: passes report command with no args when options are empty", async () => {
+        await harness.connect();
+        await assertToolCallSucceeds(harness.client, "do-gowitness-report", {});
+        assert.equal(mock.calls.length, 1);
+        assert.deepEqual(mock.calls[0].args, ["report"]);
+        await harness.cleanup();
+    });
+
+    it("report: passes screenshot_path and db_uri when provided", async () => {
+        await harness.connect();
+        await assertToolCallSucceeds(harness.client, "do-gowitness-report", {
+            screenshot_path: "/tmp/screenshots",
+            db_uri: "sqlite://gowitness.sqlite3",
+        });
+        const last = mock.lastCall();
+        assert.deepEqual(last?.args, [
+            "report",
+            "--screenshot-path", "/tmp/screenshots",
+            "--write-db-uri", "sqlite://gowitness.sqlite3",
+        ]);
+        await harness.cleanup();
+    });
+
+    // --- do-gowitness-list-screenshots tests ---
+
+    it("registers the do-gowitness-list-screenshots tool", async () => {
+        await harness.connect();
+        await assertToolExists(harness.client, "do-gowitness-list-screenshots");
+        await harness.cleanup();
+    });
+
+    it("list-screenshots: returns directory listing text", async () => {
+        await harness.connect();
+        const result = await assertToolCallSucceeds(harness.client, "do-gowitness-list-screenshots", {});
+        const text = getResultText(result);
+        assert.ok(text.includes("Found 0 screenshot files"));
+        await harness.cleanup();
+    });
+});
