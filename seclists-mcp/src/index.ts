@@ -39,7 +39,7 @@ function safePath(userPath: string): string {
 
 // Tool 1: List top-level categories
 server.tool(
-    "seclists-list-categories",
+    "do-seclists-list-categories",
     "List all top-level SecLists categories (Discovery, Passwords, Fuzzing, etc.)",
     {},
     async () => {
@@ -62,7 +62,7 @@ server.tool(
 
 // Tool 2: List wordlists in a category or subdirectory
 server.tool(
-    "seclists-list-wordlists",
+    "do-seclists-list-wordlists",
     "List files and subdirectories within a SecLists category or path. Example path: 'Discovery/Web-Content' or 'Passwords/Common-Credentials'",
     {
         path: z.string().describe("Relative path within SecLists, e.g. 'Discovery/Web-Content' or 'Passwords'"),
@@ -111,7 +111,7 @@ server.tool(
 
 // Tool 3: Search for wordlists by name pattern
 server.tool(
-    "seclists-search",
+    "do-seclists-search",
     "Search for wordlists by filename pattern across all SecLists categories. Returns matching file paths.",
     {
         pattern: z.string().describe("Search pattern to match against filenames, e.g. 'common' or 'sql' or 'top-1000'"),
@@ -134,7 +134,7 @@ server.tool(
 
 // Tool 4: Get the absolute path to a wordlist file
 server.tool(
-    "seclists-get-path",
+    "do-seclists-get-path",
     "Get the absolute filesystem path to a SecLists wordlist file. Use this to pass wordlist paths to other tools like ffuf, gobuster, nuclei, etc.",
     {
         path: z.string().describe("Relative path within SecLists, e.g. 'Discovery/Web-Content/common.txt'"),
@@ -156,7 +156,7 @@ server.tool(
 
 // Tool 5: Read wordlist contents
 server.tool(
-    "seclists-read-wordlist",
+    "do-seclists-read-wordlist",
     "Read the contents of a SecLists wordlist file. For large files, returns a preview with line count.",
     {
         path: z.string().describe("Relative path to the wordlist file, e.g. 'Discovery/Web-Content/common.txt'"),
@@ -168,7 +168,7 @@ server.tool(
 
         if (targetStat.isDirectory()) {
             return {
-                content: [{ type: "text" as const, text: `Error: '${userPath}' is a directory, not a file. Use seclists-list-wordlists instead.` }],
+                content: [{ type: "text" as const, text: `Error: '${userPath}' is a directory, not a file. Use do-seclists-list-wordlists instead.` }],
             };
         }
 

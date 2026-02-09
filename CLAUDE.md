@@ -126,7 +126,7 @@ Every server in `src/index.ts`:
 
 ## Conventions
 
-- **Directory naming:** `<tool>-mcp/` (e.g., `nmap-mcp`, `httpx-mcp`). Exception: `cero/`
+- **Directory naming:** `<tool>-mcp/` (e.g., `nmap-mcp`, `httpx-mcp`, `cero-mcp`)
 - **Tool function naming:** All use `do-<tool>` (e.g., `do-nmap`, `do-ffuf`, `do-httpx`, `do-amass`)
 - **TypeScript target:** ES2022, module: Node16, strict mode
 - **Core deps:** `@modelcontextprotocol/sdk` ^1.17.2, `zod`, `mcp-shared` (all servers)

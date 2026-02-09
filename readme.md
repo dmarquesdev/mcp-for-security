@@ -52,7 +52,7 @@ Since each MCP server may require different dependencies, the `start.sh` bash sc
 | Alterx | Pattern-based wordlist generator for subdomain discovery | [Alterx MCP Documentation](./alterx-mcp/) |
 | Arjun | Run Arjun to discover hidden HTTP parameters | [Arjun MCP Documentation](./arjun-mcp) |
 | Assetfinder | Passive subdomain discovery tool based on Tomnomnom's Assetfinder | [Assetfinder MCP Documentation](./assetfinder-mcp) |
-| Cero | Certificate-based subdomain enumeration tool leveraging TLS handshakes to extract domain names from certificate fields like SAN | [Cero MCP Documentation](./cero) |
+| Cero | Certificate-based subdomain enumeration tool leveraging TLS handshakes to extract domain names from certificate fields like SAN | [Cero MCP Documentation](./cero-mcp) |
 | Certificate Search (crt.sh) | Subdomain discovery tool using SSL certificate logs | [Certificate Search MCP Documentation](./crtsh-mcp/) |
 | Commix | Command injection detection and exploitation tool | [Commix MCP Documentation](./commix-mcp/) |
 | FFUF | Web content fuzzing tool for discovering hidden files and directories | [FFUF MCP Documentation](./ffuf-mcp/) |

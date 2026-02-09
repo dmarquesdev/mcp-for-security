@@ -2,7 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { readFile, access, readdir, writeFile, unlink, stat } from "fs/promises";
 import { join, resolve } from "path";
-import { secureSpawn, sanitizePath, startServer, getToolArgs } from "mcp-shared";
+import { secureSpawn, sanitizePath, startServer, getToolArgs, formatToolResult } from "mcp-shared";
 
 const args = getToolArgs("gowitness-mcp <gowitness binary>");
 const gowitnessPath = args[0];
@@ -15,7 +15,7 @@ const server = new McpServer({
 
 // Tool: Enhanced 'screenshot' mode with binary return option
 server.tool(
-    "gowitness-screenshot",
+    "do-gowitness-screenshot",
     "Capture screenshot of the given URL using gowitness scan single. Can save to directory or return as binary data.",
     {
         url: z.string().url().describe("URL to take a screenshot of"),
@@ -129,7 +129,7 @@ server.tool(
 
 // Tool: Enhanced 'report' mode
 server.tool(
-    "gowitness-report",
+    "do-gowitness-report",
     "Generate a report from gowitness screenshots and data",
     {
         screenshot_path: z.string().optional().describe("Path where gowitness stored screenshots"),
@@ -143,24 +143,13 @@ server.tool(
         if (db_uri) spawnArgs.push("--write-db-uri", db_uri);
 
         const result = await secureSpawn(gowitnessPath, spawnArgs);
-        const output = result.stdout + result.stderr;
-
-        if (result.exitCode !== 0) {
-            throw new Error(`gowitness exited with code ${result.exitCode}:\n${output}`);
-        }
-
-        return {
-            content: [{
-                type: "text" as const,
-                text: output + `\nGowitness report generated successfully`
-            }]
-        };
+        return formatToolResult(result, { toolName: "gowitness-report", includeStderr: true });
     }
 );
 
 // Tool: Batch screenshot with file-based approach
 server.tool(
-    "gowitness-batch-screenshot",
+    "do-gowitness-batch-screenshot",
     "Capture screenshots of multiple URLs using gowitness scan file command",
     {
         urls: z.array(z.string().url()).describe("Array of URLs to screenshot"),
@@ -234,7 +223,7 @@ server.tool(
 
 // Tool: Read screenshot file as binary data
 server.tool(
-    "gowitness-read-binary",
+    "do-gowitness-read-binary",
     "Read a screenshot file and return it as binary data",
     {
         file_path: z.string().describe("Path to the screenshot file to read"),
@@ -269,7 +258,7 @@ server.tool(
 
 // Tool: List screenshot files in directory
 server.tool(
-    "gowitness-list-screenshots",
+    "do-gowitness-list-screenshots",
     "List all screenshot files in a directory",
     {
         screenshot_dir: z.string().optional().describe("Directory to search for screenshots (default: ./screenshots)"),

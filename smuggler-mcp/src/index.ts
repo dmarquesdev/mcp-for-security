@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { secureSpawn, startServer, getToolArgs, removeAnsiCodes } from "mcp-shared";
+import { secureSpawn, startServer, getToolArgs, formatToolResult } from "mcp-shared";
 
 const args = getToolArgs("smuggler-mcp [python path] [smuggler.py path]", 2);
 
@@ -19,18 +19,16 @@ server.tool(
     async ({ url, smuggler_args = [] }) => {
         const allArgs = [args[1], "-u", url, ...smuggler_args];
         const result = await secureSpawn(args[0], allArgs);
+        const response = formatToolResult(result, { toolName: "smuggler", includeStderr: true, stripAnsi: true });
 
-        if (result.exitCode !== 0) {
-            throw new Error(`smuggler exited with code ${result.exitCode}:\n${result.stderr}`);
-        }
-
-        const output = removeAnsiCodes(result.stdout + result.stderr);
+        const output = response.content[0].text;
         const vulnResults = parseResults(output);
 
-        return {
-            content: [{ type: "text" as const, text: output || "No output from smuggler." }],
-            metadata: { findings: vulnResults }
-        };
+        if (vulnResults.cl_te.length > 0 || vulnResults.te_cl.length > 0) {
+            response.content[0].text += `\n\n--- Findings ---\nCL.TE: ${vulnResults.cl_te.length} potential issues\nTE.CL: ${vulnResults.te_cl.length} potential issues`;
+        }
+
+        return response;
     },
 );
 
@@ -55,6 +53,7 @@ function parseResults(output: string) {
 
 async function main() {
     await startServer(server);
+    console.error("smuggler MCP Server running");
 }
 
 main().catch((error) => {

@@ -2,7 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { existsSync, statSync } from "fs";
 import { join } from "path";
-import { secureSpawn, removeAnsiCodes, sanitizePath, startServer, getToolArgs } from "mcp-shared";
+import { secureSpawn, sanitizePath, startServer, getToolArgs, formatToolResult } from "mcp-shared";
 
 const args = getToolArgs("testssl-mcp <path-to-testssl.sh>");
 
@@ -25,15 +25,7 @@ async function runTestssl(testsslArgs: string[], target?: string): Promise<{ con
     if (target) finalArgs.push(target);
 
     const result = await secureSpawn(testsslPath, finalArgs);
-    const output = removeAnsiCodes(result.stdout + result.stderr);
-
-    if (result.exitCode === 0) {
-        return {
-            content: [{ type: "text", text: output || "testssl completed with no output" }],
-        };
-    } else {
-        throw new Error(`testssl exited with code ${result.exitCode}: ${output}`);
-    }
+    return formatToolResult(result, { toolName: "testssl", includeStderr: true, stripAnsi: true });
 }
 
 // Shared option interfaces and arg builders
