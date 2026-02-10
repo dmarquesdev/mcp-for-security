@@ -14,18 +14,25 @@ WORKDIR /build/server
 COPY tsconfig.base.json /tsconfig.base.json
 COPY --from=shared-builder /build/mcp-shared /build/mcp-shared
 COPY ${SERVER_DIR}/package*.json ./
-RUN npm install
+RUN npm install && rm -rf node_modules/mcp-shared && cp -r /build/mcp-shared node_modules/mcp-shared
 COPY ${SERVER_DIR}/tsconfig.json ./
 COPY ${SERVER_DIR}/src/ src/
 RUN npm run build
 
-# --- Stage 3: Runtime ---
-FROM node:22-slim
+# --- Stage 3: Build Python venv with uv (fast pip replacement) ---
+FROM python:3.11-slim AS python-builder
 ARG PIP_PACKAGE
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
+RUN python3 -m venv /opt/venv \
+    && /bin/uv pip install --python /opt/venv/bin/python ${PIP_PACKAGE}
+
+# --- Stage 4: Runtime ---
+FROM node:22-slim
 WORKDIR /app
-RUN apt-get update && apt-get install -y --no-install-recommends python3 python3-venv \
-    && python3 -m venv /opt/venv && /opt/venv/bin/pip install ${PIP_PACKAGE} \
+RUN apt-get update && apt-get install -y --no-install-recommends python3 \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
+COPY --from=python-builder /opt/venv /opt/venv
+RUN ln -sf /usr/bin/python3 /opt/venv/bin/python3
 ENV PATH="/opt/venv/bin:$PATH"
 COPY --from=server-builder /build/server/build ./build
 COPY --from=server-builder /build/server/node_modules ./node_modules

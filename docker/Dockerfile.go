@@ -14,7 +14,7 @@ WORKDIR /build/server
 COPY tsconfig.base.json /tsconfig.base.json
 COPY --from=shared-builder /build/mcp-shared /build/mcp-shared
 COPY ${SERVER_DIR}/package*.json ./
-RUN npm install
+RUN npm install && rm -rf node_modules/mcp-shared && cp -r /build/mcp-shared node_modules/mcp-shared
 COPY ${SERVER_DIR}/tsconfig.json ./
 COPY ${SERVER_DIR}/src/ src/
 RUN npm run build

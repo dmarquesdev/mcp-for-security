@@ -13,7 +13,7 @@ WORKDIR /build/server
 COPY tsconfig.base.json /tsconfig.base.json
 COPY --from=shared-builder /build/mcp-shared /build/mcp-shared
 COPY servers/shuffledns-mcp/package*.json ./
-RUN npm install
+RUN npm install && rm -rf node_modules/mcp-shared && cp -r /build/mcp-shared node_modules/mcp-shared
 COPY servers/shuffledns-mcp/tsconfig.json ./
 COPY servers/shuffledns-mcp/src/ src/
 RUN npm run build
