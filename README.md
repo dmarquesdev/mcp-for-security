@@ -24,9 +24,9 @@ docker compose up                             # Start gateway + all servers
 docker compose up gateway nmap httpx nuclei    # Start gateway + specific tools
 ```
 
-Access tools via the gateway at `http://localhost:8080/<tool>` (e.g. `http://localhost:8080/nmap`).
+Access tools via the gateway at `http://localhost:8000/<tool>` (e.g. `http://localhost:8000/nmap`).
 
-Service discovery: `GET http://localhost:8080/services`
+Service discovery: `GET http://localhost:8000/services`
 
 Generate client config for the gateway:
 ```bash

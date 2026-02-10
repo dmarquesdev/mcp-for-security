@@ -5,7 +5,7 @@
 # Usage:
 #   ./scripts/generate-http-config.sh [gateway-url]
 #
-# Default gateway: http://localhost:8080
+# Default gateway: http://localhost:8000
 
 set -e
 
@@ -13,7 +13,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 COMPOSE_FILE="$ROOT_DIR/docker-compose.yml"
 CONFIG_FILE="$ROOT_DIR/mcp-config.json"
-GATEWAY="${1:-http://localhost:8080}"
+GATEWAY="${1:-http://localhost:8000}"
 
 if [ ! -f "$COMPOSE_FILE" ]; then
     echo "Error: docker-compose.yml not found at $COMPOSE_FILE" >&2

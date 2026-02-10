@@ -29,6 +29,6 @@
     {"name": "waybackurls", "path": "/waybackurls", "description": "Wayback Machine URL retrieval"},
     {"name": "wpscan", "path": "/wpscan", "description": "WordPress vulnerability scanning"}
   ],
-  "gateway": "http://localhost:8080",
+  "gateway": "http://localhost:8000",
   "transport": "http"
 }

@@ -63,7 +63,7 @@ docker compose build                          # Build all images
 docker compose up                             # Start gateway + all 28 servers
 docker compose up gateway nmap httpx nuclei    # Start gateway + specific tools
 ```
-Per-server multi-stage Docker images behind an Nginx gateway at `localhost:8080`. Each tool runs in its own container on internal port 3000. Gateway routes by URL path (e.g. `http://localhost:8080/nmap`).
+Per-server multi-stage Docker images behind an Nginx gateway at `localhost:8000`. Each tool runs in its own container on internal port 3000. Gateway routes by URL path (e.g. `http://localhost:8000/nmap`).
 
 ### Generate gateway-aware client config
 ```bash
