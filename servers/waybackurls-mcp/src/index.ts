@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { secureSpawn, startServer, getToolArgs, formatToolResult } from "mcp-shared";
+import { secureSpawn, startServer, getToolArgs, formatToolResult, TIMEOUT_SCHEMA, buildSpawnOptions } from "mcp-shared";
 
 const args = getToolArgs("waybackurls-mcp <waybackurls binary>");
 
@@ -15,10 +15,11 @@ server.tool(
     {
         target: z.string().url().describe("Target domain to retrieve historical URLs from"),
         noSub: z.boolean().nullable().describe("When true, only retrieves URLs from the exact domain, excluding subdomains"),
+        ...TIMEOUT_SCHEMA,
     },
-    async ({ target, noSub }) => {
+    async ({ target, noSub, timeoutSeconds }, extra) => {
         const waybackurlsArgs = [target, ...(noSub ? ['--no-subs'] : [])];
-        const result = await secureSpawn(args[0], waybackurlsArgs);
+        const result = await secureSpawn(args[0], waybackurlsArgs, buildSpawnOptions(extra, { timeoutSeconds }));
         return formatToolResult(result, { toolName: "waybackurls" });
     },
 );

@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { secureSpawn, startServer, getToolArgs, formatToolResult } from "mcp-shared";
+import { secureSpawn, startServer, getToolArgs, formatToolResult, TIMEOUT_SCHEMA, buildSpawnOptions } from "mcp-shared";
 
 const args = getToolArgs("katana-mcp <katana binary>");
 
@@ -23,8 +23,9 @@ server.tool(
         headless: z.boolean().optional().describe("Enable headless browser-based hybrid crawling (experimental)."),
         system_chrome: z.boolean().optional().describe("Use the locally installed Chrome browser instead of the built-in one."),
         show_browser: z.boolean().optional().describe("Show the browser window even in headless mode (for debugging/visual inspection)."),
+        ...TIMEOUT_SCHEMA,
     },
-    async ({ target, exclude, depth, js_crawl, jsluice, headers, strategy, headless, system_chrome, show_browser }) => {
+    async ({ target, exclude, depth, js_crawl, jsluice, headers, strategy, headless, system_chrome, show_browser, timeoutSeconds }, extra) => {
         const katanaArgs = ["-u", target.join(","), "-silent"];
 
         if (exclude && exclude.length > 0) katanaArgs.push("-exclude", exclude.join(","));
@@ -37,7 +38,7 @@ server.tool(
         if (system_chrome) katanaArgs.push("-system-chrome");
         if (show_browser) katanaArgs.push("-show-browser");
 
-        const result = await secureSpawn(args[0], katanaArgs);
+        const result = await secureSpawn(args[0], katanaArgs, buildSpawnOptions(extra, { timeoutSeconds }));
         return formatToolResult(result, { toolName: "katana" });
     },
 );

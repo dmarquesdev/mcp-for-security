@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { secureSpawn, startServer, getToolArgs, formatToolResult } from "mcp-shared";
+import { secureSpawn, startServer, getToolArgs, formatToolResult, TIMEOUT_SCHEMA, buildSpawnOptions } from "mcp-shared";
 
 const args = getToolArgs("cero-mcp <cero binary>");
 
@@ -16,15 +16,16 @@ server.tool(
         target: z.string().describe("The target host or IP address to scan. Can be a single hostname, IPv4/IPv6 address, or a CIDR range (e.g., 192.168.0.0/24)."),
         concurrency: z.number().optional().describe("Maximum number of concurrent TLS connections to use during scanning. Higher values increase speed but consume more system resources."),
         ports: z.array(z.string()).optional().describe("List of TLS ports to scan for certificate information. If omitted, the default port 443 is used. Accepts multiple ports (e.g., ['443', '8443'])."),
-        timeOut: z.number().optional().describe("Maximum time (in seconds) to wait for a TLS handshake with a target. Used to prevent long delays on unresponsive hosts. Default is 4 seconds.")
+        timeOut: z.number().optional().describe("Maximum time (in seconds) to wait for a TLS handshake with a target. Used to prevent long delays on unresponsive hosts. Default is 4 seconds."),
+        ...TIMEOUT_SCHEMA,
     },
-    async ({ target, concurrency, ports, timeOut }) => {
+    async ({ target, concurrency, ports, timeOut, timeoutSeconds }, extra) => {
         const ceroArgs = [target];
         if (concurrency) ceroArgs.push("-c", concurrency.toString());
         if (ports && ports.length > 0) ceroArgs.push("-p", ports.join(","));
         if (timeOut) ceroArgs.push("-t", timeOut.toString());
 
-        const result = await secureSpawn(args[0], ceroArgs);
+        const result = await secureSpawn(args[0], ceroArgs, buildSpawnOptions(extra, { timeoutSeconds }));
         return formatToolResult(result, { toolName: "cero" });
     },
 );

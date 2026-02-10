@@ -3,7 +3,7 @@ import { z } from "zod";
 import axios from 'axios';
 import removeHeadersData from "./owasp_headers_remove.json";
 import addHeadersData from "./owasp_headers_add.json";
-import { startServer } from "mcp-shared";
+import { startServer, TIMEOUT_SCHEMA } from "mcp-shared";
 
 // Create server instance
 const server = new McpServer({
@@ -11,10 +11,11 @@ const server = new McpServer({
     version: "1.0.0",
 });
 
-async function fetchHttpHeaders(target: string): Promise<string[]> {
+async function fetchHttpHeaders(target: string, options?: { signal?: AbortSignal; timeoutMs?: number }): Promise<string[]> {
     try {
         const response = await axios.get(target, {
-            timeout: 100000,
+            timeout: options?.timeoutMs ?? 100000,
+            ...(options?.signal && { signal: options.signal }),
             validateStatus: () => true // Accept all status codes
         });
 
@@ -50,9 +51,13 @@ server.tool(
     "Perform security analysis of HTTP response headers for a web application. This tool examines HTTP headers against OWASP security best practices, identifying both potentially dangerous headers that should be removed and recommended security headers that are missing. Results include specific recommendations for improving security posture.",
     {
         target: z.string().describe("Target URL to analyze (e.g., https://example.com). The tool will make a request to this URL and evaluate its HTTP response headers for security issues."),
+        ...TIMEOUT_SCHEMA,
     },
-    async ({ target }) => {
-        const headers = await fetchHttpHeaders(target);
+    async ({ target, timeoutSeconds }, extra) => {
+        const headers = await fetchHttpHeaders(target, {
+            signal: extra.signal,
+            ...(timeoutSeconds && { timeoutMs: timeoutSeconds * 1000 }),
+        });
         const removeHeaders = await findMatchingRemoveHeaders(headers);
         const addedHeaders = await findMatchingAddedHeaders(headers);
         const result = {

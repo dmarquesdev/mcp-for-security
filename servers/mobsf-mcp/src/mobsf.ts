@@ -33,8 +33,10 @@ export class MobSFClient {
     };
   }
 
-  private async sendRequest<T>(config: AxiosRequestConfig): Promise<T> {
+  private async sendRequest<T>(config: AxiosRequestConfig, requestOptions?: { signal?: AbortSignal; timeoutMs?: number }): Promise<T> {
     try {
+      if (requestOptions?.signal) config.signal = requestOptions.signal;
+      if (requestOptions?.timeoutMs) config.timeout = requestOptions.timeoutMs;
       const response: AxiosResponse<T> = await axios(config);
       return response.data;
     } catch (error) {
@@ -52,7 +54,7 @@ export class MobSFClient {
   * @param filePath Path to the file to upload
   * @returns Upload response containing file_name, hash, and scan_type
   */
-  public async uploadFile(filePath: string): Promise<string> {
+  public async uploadFile(filePath: string, requestOptions?: { signal?: AbortSignal; timeoutMs?: number }): Promise<string> {
     const formData = new FormData();
     formData.append('file', fs.createReadStream(filePath));
 
@@ -69,7 +71,7 @@ export class MobSFClient {
       data: formData
     };
 
-    return this.sendRequest<string>(config);
+    return this.sendRequest<string>(config, requestOptions);
   }
 
   /**
@@ -78,7 +80,7 @@ export class MobSFClient {
    * @param reScan Set to true to force a rescan of the file
    * @returns Scan results
    */
-  public async scanFile(hash: string, reScan: boolean = false): Promise<string> {
+  public async scanFile(hash: string, reScan: boolean = false, requestOptions?: { signal?: AbortSignal; timeoutMs?: number }): Promise<string> {
     const formData = new URLSearchParams();
     formData.append('hash', hash);
     formData.append('re_scan', reScan ? '1' : '0');
@@ -94,7 +96,7 @@ export class MobSFClient {
       data: formData.toString()
     };
 
-    return this.sendRequest<string>(config);
+    return this.sendRequest<string>(config, requestOptions);
   }
 
   /**
@@ -102,7 +104,7 @@ export class MobSFClient {
  * @param hash Hash of the file to get logs for
  * @returns Scan logs as a string
  */
-  public async getScanLogs(hash: string): Promise<string> {
+  public async getScanLogs(hash: string, requestOptions?: { signal?: AbortSignal; timeoutMs?: number }): Promise<string> {
     const formData = new URLSearchParams();
     formData.append('hash', hash);
 
@@ -117,14 +119,14 @@ export class MobSFClient {
       data: formData.toString()
     };
 
-    return this.sendRequest<string>(config);
+    return this.sendRequest<string>(config, requestOptions);
   }
   /**
    * Generate a detailed JSON report for a scanned file
    * @param hash Hash of the file to generate a report for
    * @returns Detailed JSON report
    */
-  public async generateJsonReport(hash: string): Promise<string> {
+  public async generateJsonReport(hash: string, requestOptions?: { signal?: AbortSignal; timeoutMs?: number }): Promise<string> {
     const formData = new URLSearchParams();
     formData.append('hash', hash);
 
@@ -139,7 +141,7 @@ export class MobSFClient {
       data: formData.toString()
     };
 
-    return this.sendRequest<string>(config);
+    return this.sendRequest<string>(config, requestOptions);
   }
 
   /**
@@ -148,7 +150,7 @@ export class MobSFClient {
    * @param pageSize Number of items per page
    * @returns List of recent scans with pagination info
    */
-  public async getRecentScans(page: number = 1, pageSize: number = 10): Promise<string> {
+  public async getRecentScans(page: number = 1, pageSize: number = 10, requestOptions?: { signal?: AbortSignal; timeoutMs?: number }): Promise<string> {
     const config = this.createRequestConfig(
       '/api/v1/scans',
       'GET',
@@ -163,7 +165,7 @@ export class MobSFClient {
       }
     );
 
-    return this.sendRequest<string>(config);
+    return this.sendRequest<string>(config, requestOptions);
   }
 }
 

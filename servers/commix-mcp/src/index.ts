@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { secureSpawn, startServer, getToolArgs, formatToolResult } from "mcp-shared";
+import { secureSpawn, startServer, getToolArgs, formatToolResult, TIMEOUT_SCHEMA, buildSpawnOptions } from "mcp-shared";
 
 const args = getToolArgs("commix-mcp [python path] [commix.py path]", 2);
 
@@ -13,11 +13,12 @@ server.tool(
     "do-commix",
     "Run Commix to test for command injection issues",
     {
-        url: z.string().url().describe("Target URL to test")
+        url: z.string().url().describe("Target URL to test"),
+        ...TIMEOUT_SCHEMA,
     },
-    async ({ url }) => {
+    async ({ url, timeoutSeconds }, extra) => {
         const allArgs = [args[1], "-u", url, url];
-        const result = await secureSpawn(args[0], allArgs);
+        const result = await secureSpawn(args[0], allArgs, buildSpawnOptions(extra, { timeoutSeconds }));
         return formatToolResult(result, { toolName: "commix", stripAnsi: true });
     },
 );

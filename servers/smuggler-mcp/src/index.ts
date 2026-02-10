@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { secureSpawn, startServer, getToolArgs, formatToolResult } from "mcp-shared";
+import { secureSpawn, startServer, getToolArgs, formatToolResult, TIMEOUT_SCHEMA, buildSpawnOptions } from "mcp-shared";
 
 const args = getToolArgs("smuggler-mcp [python path] [smuggler.py path]", 2);
 
@@ -14,11 +14,12 @@ server.tool(
     "Run Smuggler to test for HTTP request smuggling issues",
     {
         url: z.string().url().describe("Target URL to test"),
-        smuggler_args: z.array(z.string()).optional().describe("Additional smuggler arguments (e.g. -m, -v, -l, -t, -x, -verify)")
+        smuggler_args: z.array(z.string()).optional().describe("Additional smuggler arguments (e.g. -m, -v, -l, -t, -x, -verify)"),
+        ...TIMEOUT_SCHEMA,
     },
-    async ({ url, smuggler_args = [] }) => {
+    async ({ url, smuggler_args = [], timeoutSeconds }, extra) => {
         const allArgs = [args[1], "-u", url, ...smuggler_args];
-        const result = await secureSpawn(args[0], allArgs);
+        const result = await secureSpawn(args[0], allArgs, buildSpawnOptions(extra, { timeoutSeconds }));
         const response = formatToolResult(result, { toolName: "smuggler", includeStderr: true, stripAnsi: true });
 
         const output = response.content[0].text;

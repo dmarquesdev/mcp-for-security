@@ -1,4 +1,4 @@
-import type { SpawnResult } from "mcp-shared";
+import type { SpawnResult, SpawnOptions } from "mcp-shared";
 
 /**
  * A recorded call to the mock secureSpawn function.
@@ -6,7 +6,7 @@ import type { SpawnResult } from "mcp-shared";
 export interface SpawnCall {
     binary: string;
     args: string[];
-    options?: unknown;
+    options?: SpawnOptions;
 }
 
 /**
@@ -35,7 +35,7 @@ export function createMockSpawn(options: MockSpawnOptions = {}) {
     async function mockSpawn(
         binary: string,
         args: string[],
-        spawnOptions?: unknown
+        spawnOptions?: SpawnOptions
     ): Promise<SpawnResult> {
         calls.push({ binary, args, options: spawnOptions });
         return options.resultMap?.get(binary) ?? defaultResult;

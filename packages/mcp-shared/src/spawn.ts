@@ -8,6 +8,7 @@ export interface SpawnOptions {
     timeoutMs?: number;
     cwd?: string;
     env?: NodeJS.ProcessEnv;
+    signal?: AbortSignal;
 }
 
 export interface SpawnResult {
@@ -25,6 +26,11 @@ export function secureSpawn(
     const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 
     return new Promise((resolve, reject) => {
+        if (options?.signal?.aborted) {
+            reject(new Error("Aborted"));
+            return;
+        }
+
         const proc = spawn(binary, args, {
             stdio: ["ignore", "pipe", "pipe"],
             cwd: options?.cwd ?? process.cwd(),
@@ -43,6 +49,25 @@ export function secureSpawn(
             reject(new Error(`Process timed out after ${timeoutMs}ms`));
         }, timeoutMs);
 
+        const onAbort = () => {
+            if (!killed) {
+                killed = true;
+                proc.kill("SIGKILL");
+                clearTimeout(timer);
+                reject(new Error("Aborted"));
+            }
+        };
+
+        if (options?.signal) {
+            options.signal.addEventListener("abort", onAbort, { once: true });
+        }
+
+        const cleanup = () => {
+            if (options?.signal) {
+                options.signal.removeEventListener("abort", onAbort);
+            }
+        };
+
         proc.stdout.on("data", (data: Buffer) => {
             stdoutBytes += data.length;
             if (stdoutBytes + stderrBytes > maxOutputBytes) {
@@ -50,6 +75,7 @@ export function secureSpawn(
                     killed = true;
                     proc.kill("SIGKILL");
                     clearTimeout(timer);
+                    cleanup();
                     reject(
                         new Error(
                             `Output exceeded ${maxOutputBytes} bytes limit`
@@ -68,6 +94,7 @@ export function secureSpawn(
                     killed = true;
                     proc.kill("SIGKILL");
                     clearTimeout(timer);
+                    cleanup();
                     reject(
                         new Error(
                             `Output exceeded ${maxOutputBytes} bytes limit`
@@ -82,6 +109,7 @@ export function secureSpawn(
         proc.on("close", (code) => {
             if (killed) return;
             clearTimeout(timer);
+            cleanup();
             resolve({
                 stdout,
                 stderr,
@@ -92,6 +120,7 @@ export function secureSpawn(
         proc.on("error", (error) => {
             if (killed) return;
             clearTimeout(timer);
+            cleanup();
             reject(new Error(`Failed to start process: ${error.message}`));
         });
     });

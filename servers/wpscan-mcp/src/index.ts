@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { secureSpawn, startServer, getToolArgs, formatToolResult } from "mcp-shared";
+import { secureSpawn, startServer, getToolArgs, formatToolResult, TIMEOUT_SCHEMA, buildSpawnOptions } from "mcp-shared";
 
 const args = getToolArgs("wpscan-mcp <wpscan binary>");
 
@@ -22,8 +22,9 @@ server.tool(
         cookies: z.string().optional().describe("Custom cookies (format: name1=value1; name2=value2)"),
         force: z.boolean().optional().describe("Skip WordPress detection checks"),
         enumerate: z.array(z.enum(["vp", "ap", "p", "vt", "at", "t", "tt", "cb", "dbe"])).describe("WordPress enumeration options: vp (vulnerable plugins), ap (all plugins), p (popular plugins), vt/at/t (themes), tt (timthumbs), cb (config backups), dbe (db exports)"),
+        ...TIMEOUT_SCHEMA,
     },
-    async ({ url, detection_mode, random_user_agent, max_threads, disable_tls_checks, proxy, cookies, force, enumerate }) => {
+    async ({ url, detection_mode, random_user_agent, max_threads, disable_tls_checks, proxy, cookies, force, enumerate, timeoutSeconds }, extra) => {
         const wpscanArgs = ['-u', url];
         if (detection_mode) wpscanArgs.push('--detection-mode', detection_mode);
         if (random_user_agent) wpscanArgs.push('--random-user-agent');
@@ -34,7 +35,7 @@ server.tool(
         if (force) wpscanArgs.push('--force');
         if (enumerate && enumerate.length > 0) wpscanArgs.push('-e', enumerate.join(','));
 
-        const result = await secureSpawn(args[0], wpscanArgs);
+        const result = await secureSpawn(args[0], wpscanArgs, buildSpawnOptions(extra, { timeoutSeconds }));
         return formatToolResult(result, { toolName: "wpscan", includeStderr: true });
     },
 );

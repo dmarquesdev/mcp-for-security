@@ -2,7 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { existsSync, statSync } from "fs";
 import { join } from "path";
-import { secureSpawn, sanitizePath, startServer, getToolArgs, formatToolResult } from "mcp-shared";
+import { secureSpawn, sanitizePath, startServer, getToolArgs, formatToolResult, TIMEOUT_SCHEMA, buildSpawnOptions } from "mcp-shared";
 
 const args = getToolArgs("testssl-mcp <path-to-testssl.sh>");
 
@@ -20,11 +20,16 @@ const server = new McpServer({
     version: "1.0.0",
 });
 
-async function runTestssl(testsslArgs: string[], target?: string): Promise<{ content: { type: "text"; text: string }[] }> {
+async function runTestssl(
+    testsslArgs: string[],
+    target: string | undefined,
+    extra: { signal: AbortSignal },
+    timeoutSeconds?: number,
+): Promise<{ content: { type: "text"; text: string }[] }> {
     const finalArgs = ["--color", "0", ...testsslArgs];
     if (target) finalArgs.push(target);
 
-    const result = await secureSpawn(testsslPath, finalArgs);
+    const result = await secureSpawn(testsslPath, finalArgs, buildSpawnOptions(extra, { timeoutSeconds }));
     return formatToolResult(result, { toolName: "testssl", includeStderr: true, stripAnsi: true });
 }
 
@@ -130,12 +135,13 @@ server.tool(
         target: z.string().describe("Target host:port or URL to scan (e.g. 'example.com:443' or 'https://example.com')"),
         ...connectionSchema,
         ...outputSchema,
+        ...TIMEOUT_SCHEMA,
     },
-    async (params) => {
+    async (params, extra) => {
         const a: string[] = [];
         addConnectionArgs(a, params);
         addOutputArgs(a, params);
-        return runTestssl(a, params.target);
+        return runTestssl(a, params.target, extra, params.timeoutSeconds);
     },
 );
 
@@ -147,12 +153,13 @@ server.tool(
         target: z.string().describe("Target host:port or URL to scan"),
         ...connectionSchema,
         ...outputSchema,
+        ...TIMEOUT_SCHEMA,
     },
-    async (params) => {
+    async (params, extra) => {
         const a: string[] = ["-p"];
         addConnectionArgs(a, params);
         addOutputArgs(a, params);
-        return runTestssl(a, params.target);
+        return runTestssl(a, params.target, extra, params.timeoutSeconds);
     },
 );
 
@@ -167,8 +174,9 @@ server.tool(
         show_each: z.boolean().optional().describe("Show each cipher tested, not just supported ones"),
         ...connectionSchema,
         ...outputSchema,
+        ...TIMEOUT_SCHEMA,
     },
-    async (params) => {
+    async (params, extra) => {
         const modeMap: Record<string, string> = {
             "standard": "-s",
             "each-cipher": "-e",
@@ -181,7 +189,7 @@ server.tool(
         if (params.show_each) a.push("--show-each");
         addConnectionArgs(a, params);
         addOutputArgs(a, params);
-        return runTestssl(a, params.target);
+        return runTestssl(a, params.target, extra, params.timeoutSeconds);
     },
 );
 
@@ -212,8 +220,9 @@ server.tool(
         rc4: z.boolean().optional().describe("Test for RC4 ciphers (-4)"),
         ...connectionSchema,
         ...outputSchema,
+        ...TIMEOUT_SCHEMA,
     },
-    async (params) => {
+    async (params, extra) => {
         const a: string[] = [];
         let hasVulnFlag = false;
 
@@ -242,7 +251,7 @@ server.tool(
 
         addConnectionArgs(a, params);
         addOutputArgs(a, params);
-        return runTestssl(a, params.target);
+        return runTestssl(a, params.target, extra, params.timeoutSeconds);
     },
 );
 
@@ -258,8 +267,9 @@ server.tool(
         grease: z.boolean().optional().describe("Test GREASE (Generate Random Extensions And Sustain Extensibility) (-g)"),
         ...connectionSchema,
         ...outputSchema,
+        ...TIMEOUT_SCHEMA,
     },
-    async (params) => {
+    async (params, extra) => {
         const a: string[] = [];
         let hasTestFlag = false;
 
@@ -275,7 +285,7 @@ server.tool(
 
         addConnectionArgs(a, params);
         addOutputArgs(a, params);
-        return runTestssl(a, params.target);
+        return runTestssl(a, params.target, extra, params.timeoutSeconds);
     },
 );
 
@@ -289,8 +299,9 @@ server.tool(
         warnings: z.enum(["batch", "off"]).optional().describe("Warning handling: batch (non-interactive) or off"),
         ...connectionSchema,
         ...outputSchema,
+        ...TIMEOUT_SCHEMA,
     },
-    async (params) => {
+    async (params, extra) => {
         // Validate file_path stays within cwd
         const safeFilePath = sanitizePath(params.file_path, process.cwd());
         const a: string[] = ["--file", safeFilePath];
@@ -307,7 +318,7 @@ server.tool(
 
         addConnectionArgs(a, params);
         addOutputArgs(a, params);
-        return runTestssl(a);
+        return runTestssl(a, undefined, extra, params.timeoutSeconds);
     },
 );
 

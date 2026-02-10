@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { secureSpawn, startServer, getToolArgs, formatToolResult } from "mcp-shared";
+import { secureSpawn, startServer, getToolArgs, formatToolResult, TIMEOUT_SCHEMA, buildSpawnOptions } from "mcp-shared";
 
 const args = getToolArgs("alterx-mcp <alterx binary>");
 
@@ -15,13 +15,14 @@ server.tool(
     {
         domain: z.string().describe("Target domain or subdomains to use as a base for creating permutations"),
         pattern: z.string().describe("Pattern template for generating wordlist variations (e.g. '{{word}}-{{sub}}.{{suffix}}')"),
-        outputFilePath: z.string().nullable().describe("Path where the generated wordlist should be saved (optional)")
+        outputFilePath: z.string().nullable().describe("Path where the generated wordlist should be saved (optional)"),
+        ...TIMEOUT_SCHEMA,
     },
-    async ({ domain, pattern, outputFilePath }) => {
+    async ({ domain, pattern, outputFilePath, timeoutSeconds }, extra) => {
         const alterxArgs = ["-l", domain, "-p", pattern];
         if (outputFilePath != null) alterxArgs.push("-o", outputFilePath);
 
-        const result = await secureSpawn(args[0], alterxArgs);
+        const result = await secureSpawn(args[0], alterxArgs, buildSpawnOptions(extra, { timeoutSeconds }));
         return formatToolResult(result, { toolName: "alterx" });
     },
 );

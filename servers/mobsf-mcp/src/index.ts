@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { createMobSFClient } from './mobsf.js';
-import { getEnvOrArg, startServer } from "mcp-shared";
+import { getEnvOrArg, startServer, TIMEOUT_SCHEMA } from "mcp-shared";
 
 // Get command line arguments — prefer env vars for credentials
 const baseUrl = getEnvOrArg("MOBSF_BASE_URL", 2);
@@ -22,6 +22,13 @@ const server = new McpServer({
     version: "1.0.0",
 });
 
+function buildRequestOptions(extra: { signal: AbortSignal }, timeoutSeconds?: number) {
+    return {
+        signal: extra.signal,
+        ...(timeoutSeconds && { timeoutMs: timeoutSeconds * 1000 }),
+    };
+}
+
 // Define the scanFile tool
 
 server.tool(
@@ -29,10 +36,11 @@ server.tool(
     "Scan a file that has already been uploaded to MobSF. This tool analyzes the uploaded mobile application for security vulnerabilities and provides a comprehensive security assessment report.",
     {
         hash: z.string().describe("Hash of the file to scan"),
-        reScan: z.boolean().optional().describe("Set to true to force a rescan of the file")
+        reScan: z.boolean().optional().describe("Set to true to force a rescan of the file"),
+        ...TIMEOUT_SCHEMA,
     },
-    async ({ hash, reScan }) => {
-        const result = await mobsfClient.scanFile(hash, reScan);
+    async ({ hash, reScan, timeoutSeconds }, extra) => {
+        const result = await mobsfClient.scanFile(hash, reScan, buildRequestOptions(extra, timeoutSeconds));
         return {
             content: [{
                 type: "text" as const,
@@ -48,9 +56,10 @@ server.tool(
     "Upload a mobile application file (APK, IPA, or APPX) to MobSF for security analysis. This is the first step before scanning and must be done prior to using other analysis functions.",
     {
         file: z.string().describe("Upload file path"),
+        ...TIMEOUT_SCHEMA,
     },
-    async ({ file }) => {
-        const result = await mobsfClient.uploadFile(file);
+    async ({ file, timeoutSeconds }, extra) => {
+        const result = await mobsfClient.uploadFile(file, buildRequestOptions(extra, timeoutSeconds));
         return {
             content: [{
                 type: "text" as const,
@@ -66,9 +75,10 @@ server.tool(
     "Retrieve detailed scan logs for a previously analyzed mobile application using its hash value. These logs contain information about the scanning process and any issues encountered.",
     {
         hash: z.string().describe("Hash file to getting scan logs"),
+        ...TIMEOUT_SCHEMA,
     },
-    async ({ hash }) => {
-        const result = await mobsfClient.getScanLogs(hash);
+    async ({ hash, timeoutSeconds }, extra) => {
+        const result = await mobsfClient.getScanLogs(hash, buildRequestOptions(extra, timeoutSeconds));
         return {
             content: [{
                 type: "text" as const,
@@ -83,9 +93,10 @@ server.tool(
     "Generate and retrieve a comprehensive security analysis report in JSON format for a scanned mobile application. This report includes detailed findings about security vulnerabilities, permissions, API calls, and other security-relevant information.",
     {
         hash: z.string().describe("Hash file to getting scan logs"),
+        ...TIMEOUT_SCHEMA,
     },
-    async ({ hash }) => {
-        const result = await mobsfClient.generateJsonReport(hash);
+    async ({ hash, timeoutSeconds }, extra) => {
+        const result = await mobsfClient.generateJsonReport(hash, buildRequestOptions(extra, timeoutSeconds));
         return {
             content: [{
                 type: "text" as const,
@@ -101,9 +112,10 @@ server.tool(
     {
         page: z.number().describe("Page number for result"),
         pageSize: z.number().describe("Page size for result"),
+        ...TIMEOUT_SCHEMA,
     },
-    async ({ page, pageSize }) => {
-        const result = await mobsfClient.getRecentScans(page, pageSize);
+    async ({ page, pageSize, timeoutSeconds }, extra) => {
+        const result = await mobsfClient.getRecentScans(page, pageSize, buildRequestOptions(extra, timeoutSeconds));
         return {
             content: [{
                 type: "text" as const,

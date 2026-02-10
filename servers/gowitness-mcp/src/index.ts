@@ -2,7 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { readFile, access, readdir, writeFile, unlink, stat } from "fs/promises";
 import { join, resolve } from "path";
-import { secureSpawn, sanitizePath, startServer, getToolArgs, formatToolResult } from "mcp-shared";
+import { secureSpawn, sanitizePath, startServer, getToolArgs, formatToolResult, TIMEOUT_SCHEMA, buildSpawnOptions } from "mcp-shared";
 
 const args = getToolArgs("gowitness-mcp <gowitness binary>");
 const gowitnessPath = args[0];
@@ -30,7 +30,8 @@ server.tool(
         threads: z.number().optional().describe("Number of concurrent threads (default 6)"),
         write_db: z.boolean().optional().describe("Write results to SQLite database"),
         write_jsonl: z.boolean().optional().describe("Write results as JSON lines"),
-        user_agent: z.string().optional().describe("Custom user-agent string")
+        user_agent: z.string().optional().describe("Custom user-agent string"),
+        ...TIMEOUT_SCHEMA,
     },
     async ({
         url,
@@ -45,8 +46,9 @@ server.tool(
         threads,
         write_db,
         write_jsonl,
-        user_agent
-    }) => {
+        user_agent,
+        timeoutSeconds
+    }, extra) => {
         const spawnArgs = ["scan", "single", "--url", url];
 
         if (chrome_window_x) spawnArgs.push("--chrome-window-x", chrome_window_x.toString());
@@ -65,7 +67,7 @@ server.tool(
             spawnArgs.push("--write-none");
         }
 
-        const result = await secureSpawn(gowitnessPath, spawnArgs);
+        const result = await secureSpawn(gowitnessPath, spawnArgs, buildSpawnOptions(extra, { timeoutSeconds }));
         const output = result.stdout + result.stderr;
 
         if (result.exitCode !== 0) {
@@ -135,14 +137,15 @@ server.tool(
         screenshot_path: z.string().optional().describe("Path where gowitness stored screenshots"),
         db_uri: z.string().optional().describe("Database URI to generate report from (e.g., sqlite://gowitness.sqlite3)"),
         output_format: z.enum(["html", "csv", "json"]).optional().describe("Report output format"),
+        ...TIMEOUT_SCHEMA,
     },
-    async ({ screenshot_path, db_uri, output_format = "html" }) => {
+    async ({ screenshot_path, db_uri, output_format = "html", timeoutSeconds }, extra) => {
         const spawnArgs = ["report"];
 
         if (screenshot_path) spawnArgs.push("--screenshot-path", screenshot_path);
         if (db_uri) spawnArgs.push("--write-db-uri", db_uri);
 
-        const result = await secureSpawn(gowitnessPath, spawnArgs);
+        const result = await secureSpawn(gowitnessPath, spawnArgs, buildSpawnOptions(extra, { timeoutSeconds }));
         return formatToolResult(result, { toolName: "gowitness-report", includeStderr: true });
     }
 );
@@ -161,7 +164,8 @@ server.tool(
         threads: z.number().optional().describe("Number of concurrent threads"),
         format: z.enum(["jpeg", "png"]).optional().describe("Screenshot format"),
         write_db: z.boolean().optional().describe("Write results to SQLite database"),
-        write_jsonl: z.boolean().optional().describe("Write results as JSON lines")
+        write_jsonl: z.boolean().optional().describe("Write results as JSON lines"),
+        ...TIMEOUT_SCHEMA,
     },
     async ({
         urls,
@@ -173,8 +177,9 @@ server.tool(
         threads,
         format,
         write_db,
-        write_jsonl
-    }) => {
+        write_jsonl,
+        timeoutSeconds
+    }, extra) => {
         // Validate screenshot_path is not a traversal path
         const safeScreenshotPath = sanitizePath(screenshot_path, process.cwd());
 
@@ -200,7 +205,7 @@ server.tool(
                 spawnArgs.push("--write-none");
             }
 
-            const result = await secureSpawn(gowitnessPath, spawnArgs);
+            const result = await secureSpawn(gowitnessPath, spawnArgs, buildSpawnOptions(extra, { timeoutSeconds }));
             const output = result.stdout + result.stderr;
 
             try { await unlink(urlsFile); } catch { /* ignore cleanup errors */ }

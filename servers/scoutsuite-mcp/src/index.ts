@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { secureSpawn, removeAnsiCodes, startServer, getToolArgs } from "mcp-shared";
+import { secureSpawn, removeAnsiCodes, startServer, getToolArgs, TIMEOUT_SCHEMA, buildSpawnOptions } from "mcp-shared";
 import { getFindingsFromScoutSuite, extractReportJsPath } from './parser.js';
 
 const args = getToolArgs("scoutsuite-mcp <scoutsuite binary>");
@@ -26,9 +26,10 @@ server.tool(
         regions: z.string().optional().describe("Comma-separated AWS regions to include"),
         exclude_regions: z.string().optional().describe("Comma-separated AWS regions to exclude"),
         ip_ranges: z.string().optional().describe("Path to JSON file with known IP ranges"),
-        ip_ranges_name_key: z.string().optional().describe("Key in IP ranges file for display name")
+        ip_ranges_name_key: z.string().optional().describe("Key in IP ranges file for display name"),
+        ...TIMEOUT_SCHEMA,
     },
-    async ({ full_report, max_workers, services, skip_services, profile, acces_keys, access_key_id, secret_acces_key, session_token, regions, exclude_regions, ip_ranges, ip_ranges_name_key }) => {
+    async ({ full_report, max_workers, services, skip_services, profile, acces_keys, access_key_id, secret_acces_key, session_token, regions, exclude_regions, ip_ranges, ip_ranges_name_key, timeoutSeconds }, extra) => {
         const scoutSuiteArgs = ["aws", "--force", "--no-browser"];
 
         if (max_workers) scoutSuiteArgs.push("--max-workers", max_workers.toString());
@@ -55,9 +56,7 @@ server.tool(
         if (ip_ranges) scoutSuiteArgs.push("--ip-ranges", ip_ranges);
         if (ip_ranges_name_key) scoutSuiteArgs.push("--ip-ranges-name-key", ip_ranges_name_key);
 
-        const result = await secureSpawn(args[0], scoutSuiteArgs, {
-            timeoutMs: 600_000,
-        });
+        const result = await secureSpawn(args[0], scoutSuiteArgs, buildSpawnOptions(extra, { timeoutSeconds, defaultTimeoutMs: 600_000 }));
 
         const output = removeAnsiCodes(result.stdout + result.stderr);
 

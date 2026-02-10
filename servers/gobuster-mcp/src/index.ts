@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { secureSpawn, startServer, getToolArgs, formatToolResult } from "mcp-shared";
+import { secureSpawn, startServer, getToolArgs, formatToolResult, TIMEOUT_SCHEMA, buildSpawnOptions } from "mcp-shared";
 import type { ToolContent } from "mcp-shared";
 
 const args = getToolArgs("gobuster-mcp <gobuster binary>");
@@ -10,8 +10,8 @@ const server = new McpServer({
     version: "1.0.0",
 });
 
-async function runGobuster(mode: string, modeArgs: string[]): Promise<ToolContent> {
-    const result = await secureSpawn(args[0], [mode, ...modeArgs, "--no-progress", "--no-color", "-q"]);
+async function runGobuster(mode: string, modeArgs: string[], extra: { signal: AbortSignal }, timeoutSeconds?: number): Promise<ToolContent> {
+    const result = await secureSpawn(args[0], [mode, ...modeArgs, "--no-progress", "--no-color", "-q"], buildSpawnOptions(extra, { timeoutSeconds }));
     return formatToolResult(result, { toolName: "gobuster" });
 }
 
@@ -47,8 +47,9 @@ server.tool(
         retry: z.boolean().optional().describe("Retry on request timeout"),
         retry_attempts: z.number().optional().describe("Number of retry attempts"),
         no_canonicalize_headers: z.boolean().optional().describe("Do not canonicalize HTTP header names"),
+        ...TIMEOUT_SCHEMA,
     },
-    async ({ url, wordlist, extensions, extensions_file, status_codes, status_codes_blacklist, method, headers, cookies, username, password, useragent, random_agent, follow_redirect, add_slash, discover_backup, expanded, no_status, hide_length, exclude_length, no_tls_validation, proxy, timeout, threads, retry, retry_attempts, no_canonicalize_headers }) => {
+    async ({ url, wordlist, extensions, extensions_file, status_codes, status_codes_blacklist, method, headers, cookies, username, password, useragent, random_agent, follow_redirect, add_slash, discover_backup, expanded, no_status, hide_length, exclude_length, no_tls_validation, proxy, timeout, threads, retry, retry_attempts, no_canonicalize_headers, timeoutSeconds }, extra) => {
         const gobusterArgs: string[] = [];
         gobusterArgs.push("-u", url);
         gobusterArgs.push("-w", wordlist);
@@ -77,7 +78,7 @@ server.tool(
         if (retry) gobusterArgs.push("--retry");
         if (retry_attempts) gobusterArgs.push("--retry-attempts", retry_attempts.toString());
         if (no_canonicalize_headers) gobusterArgs.push("--no-canonicalize-headers");
-        return runGobuster("dir", gobusterArgs);
+        return runGobuster("dir", gobusterArgs, extra, timeoutSeconds);
     },
 );
 
@@ -95,8 +96,9 @@ server.tool(
         wildcard: z.boolean().optional().describe("Force continued operation when wildcard found"),
         timeout: z.string().optional().describe("DNS timeout, e.g. '10s'"),
         threads: z.number().optional().describe("Number of concurrent threads"),
+        ...TIMEOUT_SCHEMA,
     },
-    async ({ domain, wordlist, resolver, show_ips, show_cname, no_fqdn, wildcard, timeout, threads }) => {
+    async ({ domain, wordlist, resolver, show_ips, show_cname, no_fqdn, wildcard, timeout, threads, timeoutSeconds }, extra) => {
         const gobusterArgs: string[] = [];
         gobusterArgs.push("-d", domain);
         gobusterArgs.push("-w", wordlist);
@@ -107,7 +109,7 @@ server.tool(
         if (wildcard) gobusterArgs.push("--wildcard");
         if (timeout) gobusterArgs.push("--timeout", timeout);
         if (threads) gobusterArgs.push("-t", threads.toString());
-        return runGobuster("dns", gobusterArgs);
+        return runGobuster("dns", gobusterArgs, extra, timeoutSeconds);
     },
 );
 
@@ -136,8 +138,9 @@ server.tool(
         retry: z.boolean().optional().describe("Retry on request timeout"),
         retry_attempts: z.number().optional().describe("Number of retry attempts"),
         no_canonicalize_headers: z.boolean().optional().describe("Do not canonicalize HTTP header names"),
+        ...TIMEOUT_SCHEMA,
     },
-    async ({ url, wordlist, domain, append_domain, method, headers, cookies, username, password, useragent, random_agent, follow_redirect, exclude_length, no_tls_validation, proxy, timeout, threads, retry, retry_attempts, no_canonicalize_headers }) => {
+    async ({ url, wordlist, domain, append_domain, method, headers, cookies, username, password, useragent, random_agent, follow_redirect, exclude_length, no_tls_validation, proxy, timeout, threads, retry, retry_attempts, no_canonicalize_headers, timeoutSeconds }, extra) => {
         const gobusterArgs: string[] = [];
         gobusterArgs.push("-u", url);
         gobusterArgs.push("-w", wordlist);
@@ -159,7 +162,7 @@ server.tool(
         if (retry) gobusterArgs.push("--retry");
         if (retry_attempts) gobusterArgs.push("--retry-attempts", retry_attempts.toString());
         if (no_canonicalize_headers) gobusterArgs.push("--no-canonicalize-headers");
-        return runGobuster("vhost", gobusterArgs);
+        return runGobuster("vhost", gobusterArgs, extra, timeoutSeconds);
     },
 );
 
@@ -188,8 +191,9 @@ server.tool(
         retry: z.boolean().optional().describe("Retry on request timeout"),
         retry_attempts: z.number().optional().describe("Number of retry attempts"),
         no_canonicalize_headers: z.boolean().optional().describe("Do not canonicalize HTTP header names"),
+        ...TIMEOUT_SCHEMA,
     },
-    async ({ url, wordlist, body, exclude_status_codes, method, headers, cookies, username, password, useragent, random_agent, follow_redirect, exclude_length, no_tls_validation, proxy, timeout, threads, retry, retry_attempts, no_canonicalize_headers }) => {
+    async ({ url, wordlist, body, exclude_status_codes, method, headers, cookies, username, password, useragent, random_agent, follow_redirect, exclude_length, no_tls_validation, proxy, timeout, threads, retry, retry_attempts, no_canonicalize_headers, timeoutSeconds }, extra) => {
         const gobusterArgs: string[] = [];
         gobusterArgs.push("-u", url);
         gobusterArgs.push("-w", wordlist);
@@ -211,7 +215,7 @@ server.tool(
         if (retry) gobusterArgs.push("--retry");
         if (retry_attempts) gobusterArgs.push("--retry-attempts", retry_attempts.toString());
         if (no_canonicalize_headers) gobusterArgs.push("--no-canonicalize-headers");
-        return runGobuster("fuzz", gobusterArgs);
+        return runGobuster("fuzz", gobusterArgs, extra, timeoutSeconds);
     },
 );
 
@@ -230,8 +234,9 @@ server.tool(
         threads: z.number().optional().describe("Number of concurrent threads"),
         retry: z.boolean().optional().describe("Retry on request timeout"),
         retry_attempts: z.number().optional().describe("Number of retry attempts"),
+        ...TIMEOUT_SCHEMA,
     },
-    async ({ wordlist, maxfiles, useragent, random_agent, no_tls_validation, proxy, timeout, threads, retry, retry_attempts }) => {
+    async ({ wordlist, maxfiles, useragent, random_agent, no_tls_validation, proxy, timeout, threads, retry, retry_attempts, timeoutSeconds }, extra) => {
         const gobusterArgs: string[] = [];
         gobusterArgs.push("-w", wordlist);
         if (maxfiles) gobusterArgs.push("-m", maxfiles.toString());
@@ -243,7 +248,7 @@ server.tool(
         if (threads) gobusterArgs.push("-t", threads.toString());
         if (retry) gobusterArgs.push("--retry");
         if (retry_attempts) gobusterArgs.push("--retry-attempts", retry_attempts.toString());
-        return runGobuster("s3", gobusterArgs);
+        return runGobuster("s3", gobusterArgs, extra, timeoutSeconds);
     },
 );
 
@@ -262,8 +267,9 @@ server.tool(
         threads: z.number().optional().describe("Number of concurrent threads"),
         retry: z.boolean().optional().describe("Retry on request timeout"),
         retry_attempts: z.number().optional().describe("Number of retry attempts"),
+        ...TIMEOUT_SCHEMA,
     },
-    async ({ wordlist, maxfiles, useragent, random_agent, no_tls_validation, proxy, timeout, threads, retry, retry_attempts }) => {
+    async ({ wordlist, maxfiles, useragent, random_agent, no_tls_validation, proxy, timeout, threads, retry, retry_attempts, timeoutSeconds }, extra) => {
         const gobusterArgs: string[] = [];
         gobusterArgs.push("-w", wordlist);
         if (maxfiles) gobusterArgs.push("-m", maxfiles.toString());
@@ -275,7 +281,7 @@ server.tool(
         if (threads) gobusterArgs.push("-t", threads.toString());
         if (retry) gobusterArgs.push("--retry");
         if (retry_attempts) gobusterArgs.push("--retry-attempts", retry_attempts.toString());
-        return runGobuster("gcs", gobusterArgs);
+        return runGobuster("gcs", gobusterArgs, extra, timeoutSeconds);
     },
 );
 
@@ -288,14 +294,15 @@ server.tool(
         wordlist: z.string().describe("Path to wordlist file"),
         timeout: z.string().optional().describe("TFTP timeout, e.g. '10s'"),
         threads: z.number().optional().describe("Number of concurrent threads"),
+        ...TIMEOUT_SCHEMA,
     },
-    async ({ server: tftpServer, wordlist, timeout, threads }) => {
+    async ({ server: tftpServer, wordlist, timeout, threads, timeoutSeconds }, extra) => {
         const gobusterArgs: string[] = [];
         gobusterArgs.push("-s", tftpServer);
         gobusterArgs.push("-w", wordlist);
         if (timeout) gobusterArgs.push("--timeout", timeout);
         if (threads) gobusterArgs.push("-t", threads.toString());
-        return runGobuster("tftp", gobusterArgs);
+        return runGobuster("tftp", gobusterArgs, extra, timeoutSeconds);
     },
 );
 

@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { secureSpawn, startServer, getToolArgs, formatToolResult } from "mcp-shared";
+import { secureSpawn, startServer, getToolArgs, formatToolResult, TIMEOUT_SCHEMA, buildSpawnOptions } from "mcp-shared";
 
 const args = getToolArgs("assetfinder-mcp <assetfinder binary>");
 
@@ -14,9 +14,10 @@ server.tool(
     "Find related domains and subdomains using assetfinder for a given target.",
     {
         target: z.string().describe("The root domain (e.g., example.com) to discover associated subdomains and related domains."),
+        ...TIMEOUT_SCHEMA,
     },
-    async ({ target }) => {
-        const result = await secureSpawn(args[0], ["-subs-only", target]);
+    async ({ target, timeoutSeconds }, extra) => {
+        const result = await secureSpawn(args[0], ["-subs-only", target], buildSpawnOptions(extra, { timeoutSeconds }));
         return formatToolResult(result, { toolName: "assetfinder" });
     },
 );

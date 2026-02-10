@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { secureSpawn, startServer, getToolArgs, formatToolResult } from "mcp-shared";
+import { secureSpawn, startServer, getToolArgs, formatToolResult, TIMEOUT_SCHEMA, buildSpawnOptions } from "mcp-shared";
 
 const args = getToolArgs("amass-mcp <amass binary>");
 
@@ -19,9 +19,10 @@ server.tool(
         intel_organization: z.string().optional().describe("Organization name to search for"),
         enum_type: z.enum(["active", "passive"]).optional().describe("Enumeration approach: active or passive"),
         enum_brute: z.boolean().optional().describe("Perform brute force subdomain discovery"),
-        enum_brute_wordlist: z.string().optional().describe("Path to custom wordlist for brute force")
+        enum_brute_wordlist: z.string().optional().describe("Path to custom wordlist for brute force"),
+        ...TIMEOUT_SCHEMA,
     },
-    async ({ subcommand, domain, intel_whois, intel_organization, enum_type, enum_brute, enum_brute_wordlist }) => {
+    async ({ subcommand, domain, intel_whois, intel_organization, enum_type, enum_brute, enum_brute_wordlist, timeoutSeconds }, extra) => {
         const amassArgs: string[] = [subcommand];
 
         if (subcommand === "enum") {
@@ -48,7 +49,7 @@ server.tool(
 
         console.error(`Executing: amass ${amassArgs.join(' ')}`);
 
-        const result = await secureSpawn(args[0], amassArgs);
+        const result = await secureSpawn(args[0], amassArgs, buildSpawnOptions(extra, { timeoutSeconds }));
         return formatToolResult(result, { toolName: "amass", includeStderr: true });
     },
 );

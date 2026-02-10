@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { secureSpawn, startServer, getToolArgs, formatToolResult } from "mcp-shared";
+import { secureSpawn, startServer, getToolArgs, formatToolResult, TIMEOUT_SCHEMA, buildSpawnOptions } from "mcp-shared";
 
 const args = getToolArgs("httpx-mcp <httpx binary>");
 
@@ -19,16 +19,17 @@ server.tool(
             status-code, content-length, content-type, location, favicon,
             hash, jarm, response-time, line-count, word-count, title,
             body-preview, web-server, tech-detect, method, websocket,
-            ip, cname, extract-fqdn, asn, cdn, probe`)
+            ip, cname, extract-fqdn, asn, cdn, probe`),
+        ...TIMEOUT_SCHEMA,
     },
-    async ({ target, ports, probes }) => {
+    async ({ target, ports, probes, timeoutSeconds }, extra) => {
         const httpxArgs = ["-u", target.join(","), "-silent"];
         if (ports && ports.length > 0) httpxArgs.push("-p", ports.join(","));
         if (probes && probes.length > 0) {
             for (const probe of probes) httpxArgs.push(`-${probe}`);
         }
 
-        const result = await secureSpawn(args[0], httpxArgs);
+        const result = await secureSpawn(args[0], httpxArgs, buildSpawnOptions(extra, { timeoutSeconds }));
         return formatToolResult(result, { toolName: "httpx" });
     },
 );

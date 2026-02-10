@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { secureSpawn, startServer, getToolArgs, formatToolResult } from "mcp-shared";
+import { secureSpawn, startServer, getToolArgs, formatToolResult, TIMEOUT_SCHEMA, buildSpawnOptions } from "mcp-shared";
 
 const args = getToolArgs("nuclei-mcp <nuclei binary>");
 
@@ -14,13 +14,14 @@ server.tool(
     "Execute Nuclei, a vulnerability scanner that uses YAML-based templates to detect security issues in web applications and infrastructure.",
     {
         url: z.string().url().describe("Target URL to run nuclei"),
-        tags: z.array(z.string()).optional().describe("Tags to filter nuclei templates (comma-separated)")
+        tags: z.array(z.string()).optional().describe("Tags to filter nuclei templates (comma-separated)"),
+        ...TIMEOUT_SCHEMA,
     },
-    async ({ url, tags }) => {
+    async ({ url, tags, timeoutSeconds }, extra) => {
         const nucleiArgs = ["-u", url, "-silent"];
         if (tags && tags.length > 0) nucleiArgs.push("-tags", tags.join(","));
 
-        const result = await secureSpawn(args[0], nucleiArgs);
+        const result = await secureSpawn(args[0], nucleiArgs, buildSpawnOptions(extra, { timeoutSeconds }));
         return formatToolResult(result, { toolName: "nuclei" });
     },
 );

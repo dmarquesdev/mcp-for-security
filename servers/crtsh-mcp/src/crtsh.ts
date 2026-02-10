@@ -12,15 +12,25 @@ interface CrtShResponse {
 }
 
 
-export async function GetCrtSh(target: string): Promise<string[]> {
-    const subdomains = await sendReqCrtSh(target);
+export interface CrtShOptions {
+    signal?: AbortSignal;
+    timeoutMs?: number;
+}
+
+export async function GetCrtSh(target: string, options?: CrtShOptions): Promise<string[]> {
+    const subdomains = await sendReqCrtSh(target, options);
     var results  = ClearResult(subdomains,target)
     return results;
 }
 
-async function sendReqCrtSh(query: string): Promise<string[]> {
+async function sendReqCrtSh(query: string, options?: CrtShOptions): Promise<string[]> {
     try {
-        const response = await fetch(`https://crt.sh/?q=${query}&output=json`);
+        const signals: AbortSignal[] = [];
+        if (options?.signal) signals.push(options.signal);
+        if (options?.timeoutMs) signals.push(AbortSignal.timeout(options.timeoutMs));
+        const fetchOptions: RequestInit = signals.length > 0 ? { signal: AbortSignal.any(signals) } : {};
+
+        const response = await fetch(`https://crt.sh/?q=${query}&output=json`, fetchOptions);
 
         if (!response.ok) {
             return [];

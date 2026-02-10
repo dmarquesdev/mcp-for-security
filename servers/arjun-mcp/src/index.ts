@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { secureSpawn, startServer, getToolArgs, formatToolResult } from "mcp-shared";
+import { secureSpawn, startServer, getToolArgs, formatToolResult, TIMEOUT_SCHEMA, buildSpawnOptions } from "mcp-shared";
 
 const args = getToolArgs("arjun-mcp <arjun binary or python3 arjun>");
 
@@ -19,8 +19,9 @@ server.tool(
         method: z.enum(["GET", "POST", "JSON", "HEADERS"]).optional().describe("HTTP method to use (default: GET)"),
         rateLimit: z.number().optional().describe("Maximum requests per second (default: 9999)"),
         chunkSize: z.number().optional().describe("Chunk size - number of parameters to send at once"),
+        ...TIMEOUT_SCHEMA,
     },
-    async ({ url, textFile, wordlist, method, rateLimit, chunkSize }) => {
+    async ({ url, textFile, wordlist, method, rateLimit, chunkSize, timeoutSeconds }, extra) => {
         const arjunArgs: string[] = [];
         if (!url && !textFile) throw new Error("url or textFile parameter required");
         if (url) arjunArgs.push('-u', url);
@@ -30,7 +31,7 @@ server.tool(
         if (rateLimit) arjunArgs.push('--rate-limit', rateLimit.toString());
         if (chunkSize) arjunArgs.push('--chunk-size', chunkSize.toString());
 
-        const result = await secureSpawn(args[0], arjunArgs);
+        const result = await secureSpawn(args[0], arjunArgs, buildSpawnOptions(extra, { timeoutSeconds }));
         return formatToolResult(result, { toolName: "arjun", stripAnsi: true });
     },
 );

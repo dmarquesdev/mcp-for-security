@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { secureSpawn, startServer, getToolArgs, formatToolResult } from "mcp-shared";
+import { secureSpawn, startServer, getToolArgs, formatToolResult, TIMEOUT_SCHEMA, buildSpawnOptions } from "mcp-shared";
 
 const args = getToolArgs("sqlmap-mcp <sqlmap binary>");
 
@@ -15,9 +15,10 @@ server.tool(
     {
         url: z.string().url().describe("Target URL to test"),
         sqlmap_args: z.array(z.string()).describe("Additional sqlmap arguments (e.g. --batch, --dbs, --tables, --dump, -p, --level, --risk, --data, --cookie, --random-agent)"),
+        ...TIMEOUT_SCHEMA,
     },
-    async ({ url, sqlmap_args }) => {
-        const result = await secureSpawn(args[0], ['-u', url, ...sqlmap_args]);
+    async ({ url, sqlmap_args, timeoutSeconds }, extra) => {
+        const result = await secureSpawn(args[0], ['-u', url, ...sqlmap_args], buildSpawnOptions(extra, { timeoutSeconds }));
         return formatToolResult(result, { toolName: "sqlmap", includeStderr: true });
     },
 );

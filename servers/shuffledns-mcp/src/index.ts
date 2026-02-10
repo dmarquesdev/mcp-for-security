@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { secureSpawn, startServer, getToolArgs, formatToolResult } from "mcp-shared";
+import { secureSpawn, startServer, getToolArgs, formatToolResult, TIMEOUT_SCHEMA, buildSpawnOptions } from "mcp-shared";
 
 const args = getToolArgs("shuffledns-mcp <shuffledns binary> <massdns binary>", 2);
 
@@ -17,13 +17,14 @@ server.tool(
         resolver: z.string().describe("Resolver file path"),
         mode: z.enum(["bruteforce", "resolve", "filter"]).describe("Operation mode"),
         wordlist: z.string().describe("Wordlist file path"),
-        rateLimit: z.number().optional().describe("Rate limit for requests")
+        rateLimit: z.number().optional().describe("Rate limit for requests"),
+        ...TIMEOUT_SCHEMA,
     },
-    async ({ target, resolver, mode, wordlist, rateLimit }) => {
+    async ({ target, resolver, mode, wordlist, rateLimit, timeoutSeconds }, extra) => {
         const shufflednsArgs = ["-d", target, "-r", resolver, "-mode", mode, "-w", wordlist, "-m", args[1], "-silent"];
         if (rateLimit) shufflednsArgs.push("-t", rateLimit.toString());
 
-        const result = await secureSpawn(args[0], shufflednsArgs);
+        const result = await secureSpawn(args[0], shufflednsArgs, buildSpawnOptions(extra, { timeoutSeconds }));
         return formatToolResult(result, { toolName: "shuffledns" });
     },
 );

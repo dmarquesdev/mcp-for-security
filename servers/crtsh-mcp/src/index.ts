@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { GetCrtSh } from './crtsh.js';
-import { startServer } from "mcp-shared";
+import { startServer, TIMEOUT_SCHEMA } from "mcp-shared";
 
 // Create server instance
 const server = new McpServer({
@@ -14,9 +14,13 @@ server.tool(
     "Discovers subdomains from SSL certificate logs",
     {
         target: z.string().describe("Target domain to analyze (e.g., example.com)."),
+        ...TIMEOUT_SCHEMA,
     },
-    async ({ target }) => {
-        const domains = await GetCrtSh(target);
+    async ({ target, timeoutSeconds }, extra) => {
+        const domains = await GetCrtSh(target, {
+            signal: extra.signal,
+            ...(timeoutSeconds && { timeoutMs: timeoutSeconds * 1000 }),
+        });
         return {
             content: [{
                 type: "text" as const,
