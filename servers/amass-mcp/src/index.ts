@@ -47,6 +47,8 @@ server.tool(
             if (intel_whois === true) amassArgs.push("-whois");
         }
 
+        if (process.env.AMASS_CONFIG_FILE) amassArgs.push("-config", process.env.AMASS_CONFIG_FILE);
+
         console.error(`Executing: amass ${amassArgs.join(' ')}`);
 
         const result = await secureSpawn(args[0], amassArgs, buildSpawnOptions(extra, { timeoutSeconds }));

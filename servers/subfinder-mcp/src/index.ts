@@ -47,6 +47,7 @@ server.tool(
         if (match && match.length > 0) subfinderArgs.push("-m", match.join(","));
         if (filter && filter.length > 0) subfinderArgs.push("-f", filter.join(","));
         if (verbose) subfinderArgs.push("-v");
+        if (process.env.SUBFINDER_CONFIG_FILE) subfinderArgs.push("-pc", process.env.SUBFINDER_CONFIG_FILE);
 
         const result = await secureSpawn(args[0], subfinderArgs, buildSpawnOptions(extra, { timeoutSeconds }));
         return formatToolResult(result, { toolName: "subfinder" });

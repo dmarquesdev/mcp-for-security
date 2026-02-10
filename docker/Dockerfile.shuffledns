@@ -1,6 +1,7 @@
 # --- Stage 1: Build mcp-shared ---
 FROM node:22-slim AS shared-builder
 WORKDIR /build/mcp-shared
+COPY tsconfig.base.json /tsconfig.base.json
 COPY packages/mcp-shared/package*.json ./
 COPY packages/mcp-shared/tsconfig.json ./
 COPY packages/mcp-shared/src/ src/
@@ -9,6 +10,7 @@ RUN npm install && npm run build
 # --- Stage 2: Build server TypeScript ---
 FROM node:22-slim AS server-builder
 WORKDIR /build/server
+COPY tsconfig.base.json /tsconfig.base.json
 COPY --from=shared-builder /build/mcp-shared /build/mcp-shared
 COPY servers/shuffledns-mcp/package*.json ./
 RUN npm install
@@ -22,7 +24,7 @@ RUN go install github.com/projectdiscovery/shuffledns/cmd/shuffledns@latest
 
 # --- Stage 4: Build massdns from source ---
 FROM debian:bookworm-slim AS massdns-builder
-RUN apt-get update && apt-get install -y --no-install-recommends git build-essential \
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates git build-essential \
     && git clone --depth 1 https://github.com/blechschmidt/massdns.git /build/massdns \
     && cd /build/massdns && make
 

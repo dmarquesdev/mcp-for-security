@@ -1,3 +1,6 @@
+# Environment
+.env
+
 # Generated config
 mcp-config.json
 
