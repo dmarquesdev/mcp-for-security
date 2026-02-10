@@ -23,7 +23,7 @@ echo ""
 
 # Step 1: Build mcp-shared (required by all)
 echo "━━━ Building mcp-shared ━━━"
-cd "$ROOT_DIR/mcp-shared"
+cd "$ROOT_DIR/packages/mcp-shared"
 npm install --silent 2>/dev/null
 npm run build 2>&1
 echo ""
@@ -39,14 +39,14 @@ echo ""
 
 # Step 3: Build test-helpers
 echo "━━━ Building test-helpers ━━━"
-cd "$ROOT_DIR/test-helpers"
+cd "$ROOT_DIR/packages/test-helpers"
 npm install --silent 2>/dev/null
 npm run build 2>&1
 echo ""
 
 # Step 4: Test all MCP servers
 echo "━━━ Testing MCP Servers ━━━"
-for dir in "$ROOT_DIR"/*-mcp; do
+for dir in "$ROOT_DIR"/servers/*-mcp; do
     name=$(basename "$dir")
 
     # Skip if no test script in package.json

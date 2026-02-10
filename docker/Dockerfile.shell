@@ -1,9 +1,9 @@
 # --- Stage 1: Build mcp-shared ---
 FROM node:22-slim AS shared-builder
 WORKDIR /build/mcp-shared
-COPY mcp-shared/package*.json ./
-COPY mcp-shared/tsconfig.json ./
-COPY mcp-shared/src/ src/
+COPY packages/mcp-shared/package*.json ./
+COPY packages/mcp-shared/tsconfig.json ./
+COPY packages/mcp-shared/src/ src/
 RUN npm install && npm run build
 
 # --- Stage 2: Build server TypeScript ---

@@ -1,3 +1,27 @@
+# Generated config
 mcp-config.json
+
+# IDE / AI
 .cursor/
 .claude/
+
+# Dependencies
+node_modules/
+jspm_packages/
+
+# Build output
+build/
+
+# Logs
+*.log
+
+# Lock files (workspace root lock file is kept)
+packages/*/package-lock.json
+servers/*/package-lock.json
+test-integration/package-lock.json
+
+# Tool-specific output (gowitness)
+screenshots/
+test-output/
+test-screenshots/
+test-runner.js

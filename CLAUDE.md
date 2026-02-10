@@ -4,25 +4,50 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A monorepo of 28 MCP (Model Context Protocol) server implementations that wrap popular cybersecurity tools. Each server exposes security tools as MCP tools over stdio or HTTP transport, enabling AI assistants to invoke them. A shared utility library (`mcp-shared/`) provides secure spawn, path sanitization, ANSI stripping, and dual-transport bootstrap. Originally created by [Cyprox](https://cyprox.io), independently maintained fork.
+A monorepo of 28 MCP (Model Context Protocol) server implementations that wrap popular cybersecurity tools. Each server exposes security tools as MCP tools over stdio or HTTP transport, enabling AI assistants to invoke them. A shared utility library (`packages/mcp-shared/`) provides secure spawn, path sanitization, ANSI stripping, and dual-transport bootstrap. Originally created by [Cyprox](https://cyprox.io), independently maintained fork.
+
+### Repository Structure
+
+```
+/
+  packages/               # Shared libraries
+    mcp-shared/           # Core utilities (spawn, sanitize, transport, etc.)
+    test-helpers/         # Test utilities (mock spawn, test server factory)
+  servers/                # All 28 MCP server implementations
+    nmap-mcp/
+    httpx-mcp/
+    nuclei-mcp/
+    ...25 more...
+  test-integration/       # Integration tests
+  docker/                 # Dockerfiles and Nginx config
+  scripts/                # Build and test scripts
+  tsconfig.base.json      # Shared TypeScript config (all packages extend this)
+```
+
+The repo uses **npm workspaces** — all packages are linked via the root `package.json`. Run `npm install` at the repo root to install all dependencies.
 
 ## Build Commands
 
+### Install all dependencies (npm workspaces)
+```bash
+npm install                                    # Install all workspace deps from repo root
+```
+
 ### Build the shared library (must be built first)
 ```bash
-cd mcp-shared && npm install && npm run build
+npm -w mcp-shared run build                    # Or: cd packages/mcp-shared && npm run build
 ```
-All servers depend on `mcp-shared` via `"file:../mcp-shared"`. Build it before building any server.
+All servers depend on `mcp-shared` via npm workspaces. Build it before building any server.
 
 ### Build a single MCP server
 ```bash
-cd <tool>-mcp && npm install && npm run build
+npm -w nmap-mcp run build                      # Or: cd servers/nmap-mcp && npm run build
 ```
 `npm run build` runs `tsc` to compile TypeScript from `src/` to `build/index.js`.
 
 ### Build a single server with its tool dependencies
 ```bash
-cd <tool>-mcp && ./build.sh
+cd servers/<tool>-mcp && ./build.sh
 ```
 Each `build.sh` installs the underlying security tool (Go binary, Python package, etc.), runs `npm install && npm run build`, and updates the root `mcp-config.json` via `jq`.
 
@@ -30,7 +55,7 @@ Each `build.sh` installs the underlying security tool (Go binary, Python package
 ```bash
 ./start.sh
 ```
-Iterates all `*-mcp/` directories, runs each `build.sh`, then generates the unified `mcp-config.json`.
+Iterates all `servers/*-mcp/` directories, runs each `build.sh`, then generates the unified `mcp-config.json`.
 
 ### Docker build (per-server images with Nginx gateway)
 ```bash
@@ -49,13 +74,13 @@ Per-server multi-stage Docker images behind an Nginx gateway at `localhost:8080`
 
 ### Stdio transport (default)
 ```bash
-node <tool>-mcp/build/index.js <binary-path> [additional-args]
+node servers/<tool>-mcp/build/index.js <binary-path> [additional-args]
 ```
-Example: `node nmap-mcp/build/index.js nmap`
+Example: `node servers/nmap-mcp/build/index.js nmap`
 
 ### HTTP transport
 ```bash
-node <tool>-mcp/build/index.js <binary-path> --transport http --port 3001
+node servers/<tool>-mcp/build/index.js <binary-path> --transport http --port 3001
 ```
 All servers support both stdio and HTTP transport via `startServer()` from `mcp-shared`.
 
@@ -65,7 +90,7 @@ All servers support both stdio and HTTP transport via `startServer()` from `mcp-
   "mcpServers": {
     "nmap-mcp": {
       "command": "node",
-      "args": ["/path/to/nmap-mcp/build/index.js", "nmap"]
+      "args": ["/path/to/servers/nmap-mcp/build/index.js", "nmap"]
     }
   }
 }
@@ -81,29 +106,29 @@ This executes `scripts/test-all.sh`, which builds `mcp-shared` and `test-helpers
 
 ### Run tests for a single server
 ```bash
-cd <tool>-mcp && npm install && npm run build && npm test
+npm -w nmap-mcp run build && npm -w nmap-mcp test
 ```
 Requires `mcp-shared` and `test-helpers` to be built first.
 
 ### Run mcp-shared tests only
 ```bash
-cd mcp-shared && npm run build && npm test
+npm -w mcp-shared run build && npm -w mcp-shared test
 ```
 
 ### Run integration tests only
 ```bash
-cd test-integration && npm install && npm run build && npm test
+cd test-integration && npm run build && npm test
 ```
 
 ### Test architecture (three tiers)
 
 | Tier | Location | What it tests | Mechanism |
 |------|----------|---------------|-----------|
-| Unit | `mcp-shared/src/__tests__/` | All 6 shared modules (spawn, args, env, sanitize, result, transport) | Real commands (`echo`, `node -e`) for spawn; `process.argv`/`process.env` manipulation for args/env |
-| Server | `<tool>-mcp/src/__tests__/` | Tool registration, Zod schemas, arg construction, response formatting | `InMemoryTransport` + mock `secureSpawn` — no real security tools needed |
+| Unit | `packages/mcp-shared/src/__tests__/` | All 6 shared modules (spawn, args, env, sanitize, result, transport) | Real commands (`echo`, `node -e`) for spawn; `process.argv`/`process.env` manipulation for args/env |
+| Server | `servers/<tool>-mcp/src/__tests__/` | Tool registration, Zod schemas, arg construction, response formatting | `InMemoryTransport` + mock `secureSpawn` — no real security tools needed |
 | Integration | `test-integration/src/` | Full MCP protocol cycle with real `secureSpawn` | `InMemoryTransport` with real `echo` command |
 
-### Test helpers (`test-helpers/`)
+### Test helpers (`packages/test-helpers/`)
 
 Shared test utilities used by all server tests:
 
@@ -176,7 +201,7 @@ Security Tool Layer
   - HTTP APIs (crt.sh, MobSF, http-headers-security)
 ```
 
-### Shared Utility Library (`mcp-shared/`)
+### Shared Utility Library (`packages/mcp-shared/`)
 
 All 28 servers import from the `mcp-shared` local package:
 
@@ -214,7 +239,7 @@ Every server in `src/index.ts`:
 
 ## Conventions
 
-- **Directory naming:** `<tool>-mcp/` (e.g., `nmap-mcp`, `httpx-mcp`, `cero-mcp`)
+- **Directory naming:** `servers/<tool>-mcp/` (e.g., `servers/nmap-mcp`, `servers/httpx-mcp`, `servers/cero-mcp`)
 - **Tool function naming:** All use `do-<tool>` (e.g., `do-nmap`, `do-ffuf`, `do-httpx`, `do-amass`)
 - **TypeScript target:** ES2022, module: Node16, strict mode
 - **Core deps:** `@modelcontextprotocol/sdk` ^1.17.2, `zod`, `mcp-shared` (all servers)
@@ -228,10 +253,10 @@ Every server in `src/index.ts`:
 
 ## Adding a New MCP Server
 
-1. Build `mcp-shared` first: `cd mcp-shared && npm install && npm run build`
-2. Create `<tool>-mcp/` directory following existing structure
-3. Copy `tsconfig.json` from any existing server (they're identical)
-4. Create `package.json` with `@modelcontextprotocol/sdk` ^1.17.2, `zod`, and `"mcp-shared": "file:../mcp-shared"`
+1. Build `mcp-shared` first: `npm -w mcp-shared run build`
+2. Create `servers/<tool>-mcp/` directory following existing structure
+3. Create `tsconfig.json` with `{"extends": "../../tsconfig.base.json"}`
+4. Create `package.json` with `@modelcontextprotocol/sdk` ^1.17.2, `zod`, and `"mcp-shared": "*"` (resolved via npm workspaces)
 5. Implement `src/index.ts`:
  - Import `{ secureSpawn, startServer, getToolArgs, formatToolResult }` from `"mcp-shared"`
  - Use `getToolArgs()` to parse CLI args (strips `--transport`/`--port` automatically)
@@ -239,13 +264,14 @@ Every server in `src/index.ts`:
  - Use `secureSpawn()` to run the tool (or axios for API-based tools)
  - Use `formatToolResult()` for standardized response formatting
  - Call `await startServer(server)` in `main()`
-6. Create `build.sh`: set `BIN_ARGS`, `SERVICE_PATH`, then `source scripts/build-common.sh`
-7. Add entry to root `readme.md` tools table
-8. Add the `.gitignore` file to make sure bloated files are not committed
-9. Create the MCP server `readme.md` file describing its usage and setup
-10. Add tests in `src/__tests__/<tool>.test.ts` using `test-helpers` (see Testing section above)
-11. Add to `package.json`: `"test": "node --test 'build/__tests__/*.test.js'"` in scripts, `"test-helpers": "file:../test-helpers"` in devDependencies
-12. Verify with `npm run build && npm test`
+ - Add `console.error("<tool> MCP Server running")` after `startServer()`
+6. Create `build.sh`: set `BIN_ARGS`, `SERVICE_PATH`, then `source "$SERVICE_PATH/../../scripts/build-common.sh"`
+7. Add entry to root `README.md` tools table
+8. Create the MCP server `README.md` file describing its usage and setup
+9. Add tests in `src/__tests__/<tool>.test.ts` using `test-helpers` (see Testing section above)
+10. Add to `package.json`: `"test": "node --test 'build/__tests__/*.test.js'"` in scripts, `"test-helpers": "*"` in devDependencies
+11. Run `npm install` at repo root to link the new workspace package
+12. Verify with `npm -w <tool>-mcp run build && npm -w <tool>-mcp test`
 
 ## Requirements
 Use context7 for documentation

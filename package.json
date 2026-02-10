@@ -2,7 +2,14 @@
   "name": "mcp-for-security",
   "version": "1.0.0",
   "private": true,
+  "workspaces": [
+    "packages/*",
+    "servers/*",
+    "test-integration"
+  ],
   "scripts": {
-    "test": "bash scripts/test-all.sh"
+    "test": "bash scripts/test-all.sh",
+    "build:shared": "npm -w mcp-shared run build",
+    "build:helpers": "npm -w test-helpers run build"
   }
 }

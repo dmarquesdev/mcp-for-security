@@ -2,11 +2,8 @@
 
 echo "[*] Starting all services..."
 
-# Loop through all directories in the current folder
-for dir in */ ; do
-    # Remove trailing slash
-    dir=${dir%/}
-
+# Loop through all server directories
+for dir in servers/*-mcp ; do
     # Skip if not a directory
     [ -d "$dir" ] || continue
 

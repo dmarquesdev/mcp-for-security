@@ -1,0 +1,19 @@
+{
+  "name": "gowitness-mcp",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "tsc",
+    "start": "node build/index.js",
+    "test": "node --test 'build/__tests__/*.test.js'"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.17.2",
+    "mcp-shared": "*",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.13",
+    "test-helpers": "*",
+    "typescript": "^5.8.3"
+  }
+}

@@ -26,7 +26,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile.go
       args:
-        SERVER_DIR: alterx-mcp
+        SERVER_DIR: servers/alterx-mcp
         GO_PACKAGE: github.com/projectdiscovery/alterx/cmd/alterx
         TOOL_BIN: alterx
     command: ["/usr/local/bin/alterx", "--transport", "http", "--port", "3000"]
@@ -41,7 +41,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile.go
       args:
-        SERVER_DIR: amass-mcp
+        SERVER_DIR: servers/amass-mcp
         GO_PACKAGE: github.com/owasp-amass/amass/v4/...
         GO_VERSION: master
         TOOL_BIN: amass
@@ -57,7 +57,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile.go
       args:
-        SERVER_DIR: assetfinder-mcp
+        SERVER_DIR: servers/assetfinder-mcp
         GO_PACKAGE: github.com/tomnomnom/assetfinder
         TOOL_BIN: assetfinder
     command: ["/usr/local/bin/assetfinder", "--transport", "http", "--port", "3000"]
@@ -72,7 +72,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile.go
       args:
-        SERVER_DIR: cero-mcp
+        SERVER_DIR: servers/cero-mcp
         GO_PACKAGE: github.com/glebarez/cero
         TOOL_BIN: cero
     command: ["/usr/local/bin/cero", "--transport", "http", "--port", "3000"]
@@ -87,7 +87,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile.go
       args:
-        SERVER_DIR: ffuf-mcp
+        SERVER_DIR: servers/ffuf-mcp
         GO_PACKAGE: github.com/ffuf/ffuf/v2
         TOOL_BIN: ffuf
     command: ["/usr/local/bin/ffuf", "--transport", "http", "--port", "3000"]
@@ -102,7 +102,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile.go
       args:
-        SERVER_DIR: github-subdomains-mcp
+        SERVER_DIR: servers/github-subdomains-mcp
         GO_PACKAGE: github.com/gwen001/github-subdomains
         TOOL_BIN: github-subdomains
     command: ["/usr/local/bin/github-subdomains", "--transport", "http", "--port", "3000"]
@@ -117,7 +117,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile.go
       args:
-        SERVER_DIR: gobuster-mcp
+        SERVER_DIR: servers/gobuster-mcp
         GO_PACKAGE: github.com/OJ/gobuster/v3
         TOOL_BIN: gobuster
     command: ["/usr/local/bin/gobuster", "--transport", "http", "--port", "3000"]
@@ -132,7 +132,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile.go
       args:
-        SERVER_DIR: gowitness-mcp
+        SERVER_DIR: servers/gowitness-mcp
         GO_PACKAGE: github.com/sensepost/gowitness
         TOOL_BIN: gowitness
     command: ["/usr/local/bin/gowitness", "--transport", "http", "--port", "3000"]
@@ -147,7 +147,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile.go
       args:
-        SERVER_DIR: httpx-mcp
+        SERVER_DIR: servers/httpx-mcp
         GO_PACKAGE: github.com/projectdiscovery/httpx/cmd/httpx
         TOOL_BIN: httpx
     command: ["/usr/local/bin/httpx", "--transport", "http", "--port", "3000"]
@@ -162,7 +162,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile.go
       args:
-        SERVER_DIR: katana-mcp
+        SERVER_DIR: servers/katana-mcp
         GO_PACKAGE: github.com/projectdiscovery/katana/cmd/katana
         TOOL_BIN: katana
     command: ["/usr/local/bin/katana", "--transport", "http", "--port", "3000"]
@@ -177,7 +177,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile.go
       args:
-        SERVER_DIR: nuclei-mcp
+        SERVER_DIR: servers/nuclei-mcp
         GO_PACKAGE: github.com/projectdiscovery/nuclei/v3/cmd/nuclei
         TOOL_BIN: nuclei
     command: ["/usr/local/bin/nuclei", "--transport", "http", "--port", "3000"]
@@ -192,7 +192,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile.go
       args:
-        SERVER_DIR: subfinder-mcp
+        SERVER_DIR: servers/subfinder-mcp
         GO_PACKAGE: github.com/projectdiscovery/subfinder/v2/cmd/subfinder
         TOOL_BIN: subfinder
     command: ["/usr/local/bin/subfinder", "--transport", "http", "--port", "3000"]
@@ -207,7 +207,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile.go
       args:
-        SERVER_DIR: waybackurls-mcp
+        SERVER_DIR: servers/waybackurls-mcp
         GO_PACKAGE: github.com/tomnomnom/waybackurls
         TOOL_BIN: waybackurls
     command: ["/usr/local/bin/waybackurls", "--transport", "http", "--port", "3000"]
@@ -237,7 +237,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile.system
       args:
-        SERVER_DIR: nmap-mcp
+        SERVER_DIR: servers/nmap-mcp
         APT_PACKAGES: nmap
     command: ["/usr/bin/nmap", "--transport", "http", "--port", "3000"]
     expose: ["3000"]
@@ -251,7 +251,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile.system
       args:
-        SERVER_DIR: masscan-mcp
+        SERVER_DIR: servers/masscan-mcp
         APT_PACKAGES: masscan
     command: ["/usr/bin/masscan", "--transport", "http", "--port", "3000"]
     expose: ["3000"]
@@ -265,7 +265,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile.system
       args:
-        SERVER_DIR: sslscan-mcp
+        SERVER_DIR: servers/sslscan-mcp
         APT_PACKAGES: sslscan
     command: ["/usr/bin/sslscan", "--transport", "http", "--port", "3000"]
     expose: ["3000"]
@@ -283,7 +283,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile.python-pip
       args:
-        SERVER_DIR: arjun-mcp
+        SERVER_DIR: servers/arjun-mcp
         PIP_PACKAGE: arjun
     command: ["/opt/venv/bin/arjun", "--transport", "http", "--port", "3000"]
     expose: ["3000"]
@@ -297,7 +297,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile.python-pip
       args:
-        SERVER_DIR: scoutsuite-mcp
+        SERVER_DIR: servers/scoutsuite-mcp
         PIP_PACKAGE: scoutsuite
     command: ["/opt/venv/bin/scout", "--transport", "http", "--port", "3000"]
     expose: ["3000"]
@@ -315,7 +315,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile.python-git
       args:
-        SERVER_DIR: commix-mcp
+        SERVER_DIR: servers/commix-mcp
         GIT_REPO: https://github.com/commixproject/commix.git
         CLONE_DIR: /opt/commix
     command: ["python3", "/opt/commix/commix.py", "--transport", "http", "--port", "3000"]
@@ -330,7 +330,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile.python-git
       args:
-        SERVER_DIR: smuggler-mcp
+        SERVER_DIR: servers/smuggler-mcp
         GIT_REPO: https://github.com/defparam/smuggler.git
         CLONE_DIR: /opt/smuggler
     command: ["python3", "/opt/smuggler/smuggler.py", "--transport", "http", "--port", "3000"]
@@ -345,7 +345,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile.python-git
       args:
-        SERVER_DIR: sqlmap-mcp
+        SERVER_DIR: servers/sqlmap-mcp
         GIT_REPO: https://github.com/sqlmapproject/sqlmap.git
         CLONE_DIR: /opt/sqlmap
     command: ["python3", "/opt/sqlmap/sqlmap.py", "--transport", "http", "--port", "3000"]
@@ -364,7 +364,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile.ruby
       args:
-        SERVER_DIR: wpscan-mcp
+        SERVER_DIR: servers/wpscan-mcp
         GEM_PACKAGE: wpscan
     command: ["wpscan", "--transport", "http", "--port", "3000"]
     expose: ["3000"]
@@ -382,7 +382,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile.shell
       args:
-        SERVER_DIR: testssl-mcp
+        SERVER_DIR: servers/testssl-mcp
         GIT_REPO: https://github.com/testssl/testssl.sh.git
         CLONE_DIR: /opt/testssl
     command: ["/opt/testssl/testssl.sh", "--transport", "http", "--port", "3000"]
@@ -416,7 +416,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile.api
       args:
-        SERVER_DIR: crtsh-mcp
+        SERVER_DIR: servers/crtsh-mcp
     command: ["--transport", "http", "--port", "3000"]
     expose: ["3000"]
     healthcheck:
@@ -429,7 +429,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile.api
       args:
-        SERVER_DIR: http-headers-security-mcp
+        SERVER_DIR: servers/http-headers-security-mcp
     command: ["--transport", "http", "--port", "3000"]
     expose: ["3000"]
     healthcheck:
@@ -442,7 +442,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile.api
       args:
-        SERVER_DIR: mobsf-mcp
+        SERVER_DIR: servers/mobsf-mcp
     command: ["--transport", "http", "--port", "3000"]
     expose: ["3000"]
     environment:
