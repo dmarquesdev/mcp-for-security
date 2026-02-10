@@ -1,0 +1,38 @@
+# --- Stage 1: Build mcp-shared ---
+FROM node:22-slim AS shared-builder
+WORKDIR /build/mcp-shared
+COPY mcp-shared/package*.json ./
+COPY mcp-shared/tsconfig.json ./
+COPY mcp-shared/src/ src/
+RUN npm install && npm run build
+
+# --- Stage 2: Build server TypeScript ---
+FROM node:22-slim AS server-builder
+WORKDIR /build/server
+COPY --from=shared-builder /build/mcp-shared /build/mcp-shared
+COPY shuffledns-mcp/package*.json ./
+RUN npm install
+COPY shuffledns-mcp/tsconfig.json ./
+COPY shuffledns-mcp/src/ src/
+RUN npm run build
+
+# --- Stage 3: Build Go binary ---
+FROM golang:1.24-bookworm AS go-builder
+RUN go install github.com/projectdiscovery/shuffledns/cmd/shuffledns@latest
+
+# --- Stage 4: Build massdns from source ---
+FROM debian:bookworm-slim AS massdns-builder
+RUN apt-get update && apt-get install -y --no-install-recommends git build-essential \
+    && git clone --depth 1 https://github.com/blechschmidt/massdns.git /build/massdns \
+    && cd /build/massdns && make
+
+# --- Stage 5: Runtime ---
+FROM node:22-slim
+WORKDIR /app
+COPY --from=go-builder /go/bin/shuffledns /usr/local/bin/shuffledns
+COPY --from=massdns-builder /build/massdns/bin/massdns /usr/local/bin/massdns
+COPY --from=server-builder /build/server/build ./build
+COPY --from=server-builder /build/server/node_modules ./node_modules
+COPY --from=server-builder /build/server/package.json ./
+EXPOSE 3000
+ENTRYPOINT ["node", "build/index.js"]

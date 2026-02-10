@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A monorepo of 28 MCP (Model Context Protocol) server implementations that wrap popular cybersecurity tools. Each server exposes security tools as MCP tools over stdio or HTTP transport, enabling AI assistants to invoke them. A shared utility library (`mcp-shared/`) provides secure spawn, path sanitization, ANSI stripping, and dual-transport bootstrap. Maintained by Cyprox (cyprox.io).
+A monorepo of 28 MCP (Model Context Protocol) server implementations that wrap popular cybersecurity tools. Each server exposes security tools as MCP tools over stdio or HTTP transport, enabling AI assistants to invoke them. A shared utility library (`mcp-shared/`) provides secure spawn, path sanitization, ANSI stripping, and dual-transport bootstrap. Originally created by [Cyprox](https://cyprox.io), independently maintained fork.
 
 ## Build Commands
 
@@ -32,11 +32,18 @@ Each `build.sh` installs the underlying security tool (Go binary, Python package
 ```
 Iterates all `*-mcp/` directories, runs each `build.sh`, then generates the unified `mcp-config.json`.
 
-### Docker build
+### Docker build (per-server images with Nginx gateway)
 ```bash
-docker build -t cyprox/mcp-for-security .
+docker compose build                          # Build all images
+docker compose up                             # Start gateway + all 28 servers
+docker compose up gateway nmap httpx nuclei    # Start gateway + specific tools
 ```
-Multi-stage build on `golang:1.24-bullseye` installing Node.js v24, Python3, Ruby, and all security tools.
+Per-server multi-stage Docker images behind an Nginx gateway at `localhost:8080`. Each tool runs in its own container on internal port 3000. Gateway routes by URL path (e.g. `http://localhost:8080/nmap`).
+
+### Generate gateway-aware client config
+```bash
+./scripts/generate-http-config.sh             # Produces mcp-config.json with gateway URLs
+```
 
 ## Running an MCP Server
 

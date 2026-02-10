@@ -32,7 +32,7 @@ Gowitness MCP enables seamless integration of gowitness's web screenshot and rec
 1. Clone this repository:
     
     ```bash
-    git clone https://github.com/cyproxio/mcp-for-security
+    git clone https://github.com/dmarquesdev/mcp-for-security
     cd gowitness-mcp
     ```
     

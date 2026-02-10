@@ -25,7 +25,7 @@ Masscan MCP enables seamless integration of Masscan's high-speed network scannin
 
 1. Clone this repository:
  ```
- git clone https://github.com/cyproxio/mcp-for-security
+ git clone https://github.com/dmarquesdev/mcp-for-security
  cd masscan-mcp
  ```
 

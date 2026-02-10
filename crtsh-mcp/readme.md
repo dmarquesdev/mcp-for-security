@@ -25,7 +25,7 @@ Certificate Search MCP enables seamless integration of crt.sh's capability to di
 
 1. Clone this repository:
  ```
- git clone https://github.com/cyproxio/mcp-for-security
+ git clone https://github.com/dmarquesdev/mcp-for-security
  cd crtsh-mcp
  ```
 

@@ -1,0 +1,454 @@
+x-healthcheck: &healthcheck
+  interval: 30s
+  timeout: 5s
+  retries: 3
+  start_period: 10s
+
+x-restart: &restart
+  restart: unless-stopped
+
+services:
+  # ─── Gateway ───
+  gateway:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.gateway
+    ports:
+      - "${GATEWAY_PORT:-8080}:8080"
+    <<: *restart
+
+  # ═══════════════════════════════════════════
+  # Go Tools (14)
+  # ═══════════════════════════════════════════
+
+  alterx:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.go
+      args:
+        SERVER_DIR: alterx-mcp
+        GO_PACKAGE: github.com/projectdiscovery/alterx/cmd/alterx
+        TOOL_BIN: alterx
+    command: ["/usr/local/bin/alterx", "--transport", "http", "--port", "3000"]
+    expose: ["3000"]
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
+    <<: *restart
+
+  amass:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.go
+      args:
+        SERVER_DIR: amass-mcp
+        GO_PACKAGE: github.com/owasp-amass/amass/v4/...
+        GO_VERSION: master
+        TOOL_BIN: amass
+    command: ["/usr/local/bin/amass", "--transport", "http", "--port", "3000"]
+    expose: ["3000"]
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
+    <<: *restart
+
+  assetfinder:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.go
+      args:
+        SERVER_DIR: assetfinder-mcp
+        GO_PACKAGE: github.com/tomnomnom/assetfinder
+        TOOL_BIN: assetfinder
+    command: ["/usr/local/bin/assetfinder", "--transport", "http", "--port", "3000"]
+    expose: ["3000"]
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
+    <<: *restart
+
+  cero:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.go
+      args:
+        SERVER_DIR: cero-mcp
+        GO_PACKAGE: github.com/glebarez/cero
+        TOOL_BIN: cero
+    command: ["/usr/local/bin/cero", "--transport", "http", "--port", "3000"]
+    expose: ["3000"]
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
+    <<: *restart
+
+  ffuf:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.go
+      args:
+        SERVER_DIR: ffuf-mcp
+        GO_PACKAGE: github.com/ffuf/ffuf/v2
+        TOOL_BIN: ffuf
+    command: ["/usr/local/bin/ffuf", "--transport", "http", "--port", "3000"]
+    expose: ["3000"]
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
+    <<: *restart
+
+  github-subdomains:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.go
+      args:
+        SERVER_DIR: github-subdomains-mcp
+        GO_PACKAGE: github.com/gwen001/github-subdomains
+        TOOL_BIN: github-subdomains
+    command: ["/usr/local/bin/github-subdomains", "--transport", "http", "--port", "3000"]
+    expose: ["3000"]
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
+    <<: *restart
+
+  gobuster:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.go
+      args:
+        SERVER_DIR: gobuster-mcp
+        GO_PACKAGE: github.com/OJ/gobuster/v3
+        TOOL_BIN: gobuster
+    command: ["/usr/local/bin/gobuster", "--transport", "http", "--port", "3000"]
+    expose: ["3000"]
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
+    <<: *restart
+
+  gowitness:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.go
+      args:
+        SERVER_DIR: gowitness-mcp
+        GO_PACKAGE: github.com/sensepost/gowitness
+        TOOL_BIN: gowitness
+    command: ["/usr/local/bin/gowitness", "--transport", "http", "--port", "3000"]
+    expose: ["3000"]
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
+    <<: *restart
+
+  httpx:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.go
+      args:
+        SERVER_DIR: httpx-mcp
+        GO_PACKAGE: github.com/projectdiscovery/httpx/cmd/httpx
+        TOOL_BIN: httpx
+    command: ["/usr/local/bin/httpx", "--transport", "http", "--port", "3000"]
+    expose: ["3000"]
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
+    <<: *restart
+
+  katana:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.go
+      args:
+        SERVER_DIR: katana-mcp
+        GO_PACKAGE: github.com/projectdiscovery/katana/cmd/katana
+        TOOL_BIN: katana
+    command: ["/usr/local/bin/katana", "--transport", "http", "--port", "3000"]
+    expose: ["3000"]
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
+    <<: *restart
+
+  nuclei:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.go
+      args:
+        SERVER_DIR: nuclei-mcp
+        GO_PACKAGE: github.com/projectdiscovery/nuclei/v3/cmd/nuclei
+        TOOL_BIN: nuclei
+    command: ["/usr/local/bin/nuclei", "--transport", "http", "--port", "3000"]
+    expose: ["3000"]
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
+    <<: *restart
+
+  subfinder:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.go
+      args:
+        SERVER_DIR: subfinder-mcp
+        GO_PACKAGE: github.com/projectdiscovery/subfinder/v2/cmd/subfinder
+        TOOL_BIN: subfinder
+    command: ["/usr/local/bin/subfinder", "--transport", "http", "--port", "3000"]
+    expose: ["3000"]
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
+    <<: *restart
+
+  waybackurls:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.go
+      args:
+        SERVER_DIR: waybackurls-mcp
+        GO_PACKAGE: github.com/tomnomnom/waybackurls
+        TOOL_BIN: waybackurls
+    command: ["/usr/local/bin/waybackurls", "--transport", "http", "--port", "3000"]
+    expose: ["3000"]
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
+    <<: *restart
+
+  shuffledns:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.shuffledns
+    command: ["/usr/local/bin/shuffledns", "--transport", "http", "--port", "3000"]
+    expose: ["3000"]
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
+    <<: *restart
+
+  # ═══════════════════════════════════════════
+  # System Tools (3)
+  # ═══════════════════════════════════════════
+
+  nmap:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.system
+      args:
+        SERVER_DIR: nmap-mcp
+        APT_PACKAGES: nmap
+    command: ["/usr/bin/nmap", "--transport", "http", "--port", "3000"]
+    expose: ["3000"]
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
+    <<: *restart
+
+  masscan:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.system
+      args:
+        SERVER_DIR: masscan-mcp
+        APT_PACKAGES: masscan
+    command: ["/usr/bin/masscan", "--transport", "http", "--port", "3000"]
+    expose: ["3000"]
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
+    <<: *restart
+
+  sslscan:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.system
+      args:
+        SERVER_DIR: sslscan-mcp
+        APT_PACKAGES: sslscan
+    command: ["/usr/bin/sslscan", "--transport", "http", "--port", "3000"]
+    expose: ["3000"]
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
+    <<: *restart
+
+  # ═══════════════════════════════════════════
+  # Python Pip Tools (2)
+  # ═══════════════════════════════════════════
+
+  arjun:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.python-pip
+      args:
+        SERVER_DIR: arjun-mcp
+        PIP_PACKAGE: arjun
+    command: ["/opt/venv/bin/arjun", "--transport", "http", "--port", "3000"]
+    expose: ["3000"]
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
+    <<: *restart
+
+  scoutsuite:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.python-pip
+      args:
+        SERVER_DIR: scoutsuite-mcp
+        PIP_PACKAGE: scoutsuite
+    command: ["/opt/venv/bin/scout", "--transport", "http", "--port", "3000"]
+    expose: ["3000"]
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
+    <<: *restart
+
+  # ═══════════════════════════════════════════
+  # Python Git Tools (3)
+  # ═══════════════════════════════════════════
+
+  commix:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.python-git
+      args:
+        SERVER_DIR: commix-mcp
+        GIT_REPO: https://github.com/commixproject/commix.git
+        CLONE_DIR: /opt/commix
+    command: ["python3", "/opt/commix/commix.py", "--transport", "http", "--port", "3000"]
+    expose: ["3000"]
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
+    <<: *restart
+
+  smuggler:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.python-git
+      args:
+        SERVER_DIR: smuggler-mcp
+        GIT_REPO: https://github.com/defparam/smuggler.git
+        CLONE_DIR: /opt/smuggler
+    command: ["python3", "/opt/smuggler/smuggler.py", "--transport", "http", "--port", "3000"]
+    expose: ["3000"]
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
+    <<: *restart
+
+  sqlmap:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.python-git
+      args:
+        SERVER_DIR: sqlmap-mcp
+        GIT_REPO: https://github.com/sqlmapproject/sqlmap.git
+        CLONE_DIR: /opt/sqlmap
+    command: ["python3", "/opt/sqlmap/sqlmap.py", "--transport", "http", "--port", "3000"]
+    expose: ["3000"]
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
+    <<: *restart
+
+  # ═══════════════════════════════════════════
+  # Ruby Tools (1)
+  # ═══════════════════════════════════════════
+
+  wpscan:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.ruby
+      args:
+        SERVER_DIR: wpscan-mcp
+        GEM_PACKAGE: wpscan
+    command: ["wpscan", "--transport", "http", "--port", "3000"]
+    expose: ["3000"]
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
+    <<: *restart
+
+  # ═══════════════════════════════════════════
+  # Shell Tools (1)
+  # ═══════════════════════════════════════════
+
+  testssl:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.shell
+      args:
+        SERVER_DIR: testssl-mcp
+        GIT_REPO: https://github.com/testssl/testssl.sh.git
+        CLONE_DIR: /opt/testssl
+    command: ["/opt/testssl/testssl.sh", "--transport", "http", "--port", "3000"]
+    expose: ["3000"]
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
+    <<: *restart
+
+  # ═══════════════════════════════════════════
+  # SecLists (1)
+  # ═══════════════════════════════════════════
+
+  seclists:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.seclists
+    command: ["/opt/seclists", "--transport", "http", "--port", "3000"]
+    expose: ["3000"]
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
+    <<: *restart
+
+  # ═══════════════════════════════════════════
+  # API-Only Tools (3)
+  # ═══════════════════════════════════════════
+
+  crtsh:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+      args:
+        SERVER_DIR: crtsh-mcp
+    command: ["--transport", "http", "--port", "3000"]
+    expose: ["3000"]
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
+    <<: *restart
+
+  http-headers-security:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+      args:
+        SERVER_DIR: http-headers-security-mcp
+    command: ["--transport", "http", "--port", "3000"]
+    expose: ["3000"]
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
+    <<: *restart
+
+  mobsf:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+      args:
+        SERVER_DIR: mobsf-mcp
+    command: ["--transport", "http", "--port", "3000"]
+    expose: ["3000"]
+    environment:
+      - MOBSF_API_KEY=${MOBSF_API_KEY:-}
+      - MOBSF_URL=${MOBSF_URL:-}
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
+    <<: *restart

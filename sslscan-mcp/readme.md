@@ -26,7 +26,7 @@ SSLScan MCP enables seamless integration of SSLScan's SSL/TLS assessment capabil
 
 1. Clone this repository:
  ```
- git clone https://github.com/cyproxio/mcp-for-security
+ git clone https://github.com/dmarquesdev/mcp-for-security
  cd sslscan-mcp
  ```
 

@@ -2,24 +2,34 @@
 .git
 .gitignore
 
+# Build artifacts (rebuilt inside containers)
 **/node_modules
-
 **/build
 
-# Log dosyaları
+# Logs
 *.log
 npm-debug.log
 
+# Temp files
 tmp
 *.tmp
+
+# IDE
 .vscode
 .idea
 
+# Environment files
 .env
 .env.local
 .env.*.local
 
-Dockerfile
-README.md
-*.md
-tests
+# Tests (not needed in production images)
+**/src/__tests__
+test-helpers
+test-integration
+
+# Legacy monolithic Dockerfile
+docker/Dockerfile.legacy
+
+# Plans and docs not needed in build
+*.plan.md

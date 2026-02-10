@@ -27,7 +27,7 @@ HTTP Headers Security MCP enables seamless integration of HTTP security header a
 
 1. Clone this repository:
  ```
- git clone https://github.com/cyproxio/mcp-for-security
+ git clone https://github.com/dmarquesdev/mcp-for-security
 
  cd http-headers-security-mcp
  ```

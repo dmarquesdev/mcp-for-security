@@ -1,27 +1,9 @@
 # MCP for Security
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Stars](https://img.shields.io/github/stars/cyproxio/mcp-for-security?style=social)](https://github.com/cyproxio/mcp-for-security/stargazers)
-[![Docker](https://img.shields.io/github/release/cyproxio/mcp-for-security?style=social)](https://github.com/cyproxio/mcp-for-security/releases)
----
+[![Stars](https://img.shields.io/github/stars/dmarquesdev/mcp-for-security?style=social)](https://github.com/dmarquesdev/mcp-for-security/stargazers)
 
-<img src="https://avatars.githubusercontent.com/u/89649708?s=48&v=4" width="40" align="left" />
-
-**About Cyprox — The Future of AI-Driven Cybersecurity** <br/></br>
-
-
-**Cyprox** is pioneering the future of cybersecurity by combining artificial intelligence and security tools to empower organizations with next-level threat detection and automated response.  
-
-> *"The Future of Cybersecurity Humans and AI, Working Together..."*
-
-### Cyprox
-
-- 🚀 **AI Driven Solutions:** Cybersecurity solutions using Agentic-AI systems with an AI-driven approach
-- 🌐 **Community-Driven:** Open-source projects fostering collaboration and rapid evolution.
-- ⚡ **Speed & Precision:** Automated threat detection that reduces human latency.
-- 🔒 **Secure & Transparent:** Trustworthy platform built with open standards.
-
-Explore more at [https://cyprox.io](https://cyprox.io)
+> **Note:** This is a fork of [cyproxio/mcp-for-security](https://github.com/cyproxio/mcp-for-security), originally created by [Cyprox](https://cyprox.io).
 
 ---
 
@@ -33,12 +15,25 @@ Explore more at [https://cyprox.io](https://cyprox.io)
 
 ## 🌐 Installation 
 
-### Docker
+### Docker (Recommended)
 
-You can use all MCP servers through Docker using the cyprox/mcp-for-security Docker image. It can also be used from any MCP client with Docker support, such as the Cyprox platform.
-Visit [Cyprox](https://cyprox.io) for more information.
+Run all 28 MCP servers behind a single Nginx gateway using Docker Compose:
 
-### Manuel
+```bash
+docker compose up                             # Start gateway + all servers
+docker compose up gateway nmap httpx nuclei    # Start gateway + specific tools
+```
+
+Access tools via the gateway at `http://localhost:8080/<tool>` (e.g. `http://localhost:8080/nmap`).
+
+Service discovery: `GET http://localhost:8080/services`
+
+Generate client config for the gateway:
+```bash
+./scripts/generate-http-config.sh
+```
+
+### Manual
 Since each MCP server may require different dependencies, the `start.sh` bash script provides a general setup mechanism. Nonetheless, users should always refer to the installation instructions specific to the corresponding MCP server to ensure proper setup.
 
 ---

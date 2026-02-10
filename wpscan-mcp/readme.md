@@ -19,7 +19,7 @@ WPScan MCP enables seamless integration of WPScan’s advanced WordPress vulnera
 
 1. Clone this repository:
    ```
-   git clone https://github.com/cyproxio/mcp-for-security
+   git clone https://github.com/dmarquesdev/mcp-for-security
    cd wpscan-mcp
    ```
 

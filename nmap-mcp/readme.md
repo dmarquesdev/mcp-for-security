@@ -25,7 +25,7 @@ Nmap MCP enables seamless integration of Nmap's comprehensive network scanning a
 
 1. Clone this repository:
  ```
-  git clone https://github.com/cyproxio/mcp-for-security
+  git clone https://github.com/dmarquesdev/mcp-for-security
  cd nmap-mcp
  ```
 

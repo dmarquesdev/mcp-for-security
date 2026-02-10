@@ -30,7 +30,7 @@ testssl MCP enables seamless integration of testssl.sh's extensive TLS/SSL asses
 
 1. Clone this repository:
  ```
- git clone https://github.com/cyproxio/mcp-for-security
+ git clone https://github.com/dmarquesdev/mcp-for-security
  cd testssl-mcp
  ```
 

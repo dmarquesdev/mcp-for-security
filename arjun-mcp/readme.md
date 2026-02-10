@@ -32,7 +32,7 @@ Arjun MCP enables seamless integration of Arjun’s advanced hidden parameter di
 
 1. Clone this repository:
    ```
-   git clone https://github.com/cyproxio/mcp-for-security
+   git clone https://github.com/dmarquesdev/mcp-for-security
    cd arjun-mcp
    ```
 

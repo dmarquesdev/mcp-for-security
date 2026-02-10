@@ -26,7 +26,7 @@ MobSF MCP enables seamless integration of MobSF's powerful mobile application se
 
 1. Clone this repository:
  ```
- git clone https://github.com/cyproxio/mcp-for-security
+ git clone https://github.com/dmarquesdev/mcp-for-security
  cd mobsf-mcp
  ```
 

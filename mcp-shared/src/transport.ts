@@ -21,7 +21,7 @@ export async function startServer(
 ): Promise<void> {
     const transportArg = parseArg("transport") || "stdio";
 
-    if (transportArg === "http") {
+    if (transportArg === "http" || transportArg === "sse") {
         const { StreamableHTTPServerTransport } = await import(
             "@modelcontextprotocol/sdk/server/streamableHttp.js"
         );
@@ -36,9 +36,43 @@ export async function startServer(
 
         await server.connect(transport);
 
-        createServer(async (req, res) => {
+        const httpServer = createServer(async (req, res) => {
+            const url = new URL(req.url || "/", `http://localhost:${port}`);
+
+            // Health check endpoint (bypasses MCP transport)
+            if (url.pathname === "/healthz") {
+                res.writeHead(200, { "Content-Type": "application/json" });
+                res.end(JSON.stringify({ status: "ok" }));
+                return;
+            }
+
+            // CORS preflight
+            if (req.method === "OPTIONS") {
+                res.writeHead(204, {
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
+                    "Access-Control-Allow-Headers": "Content-Type, Accept, Mcp-Session-Id",
+                });
+                res.end();
+                return;
+            }
+
+            // Add CORS headers to all responses
+            res.setHeader("Access-Control-Allow-Origin", "*");
+
             await transport.handleRequest(req, res);
-        }).listen(port);
+        });
+
+        httpServer.listen(port);
+
+        // Graceful shutdown
+        const shutdown = () => {
+            console.error("Shutting down...");
+            httpServer.close(() => process.exit(0));
+            setTimeout(() => process.exit(1), 5000);
+        };
+        process.on("SIGTERM", shutdown);
+        process.on("SIGINT", shutdown);
 
         console.error(`MCP Server running on HTTP port ${port}`);
     } else {

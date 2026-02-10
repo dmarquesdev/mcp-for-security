@@ -18,7 +18,7 @@ Smuggler MCP allows you to use the Smuggler HTTP Request Smuggling testing tool 
 
 1. Clone this repository:
    ```
-   git clone https://github.com/cyproxio/mcp-for-security
+   git clone https://github.com/dmarquesdev/mcp-for-security
    cd smuggler-mcp
    ```
 
