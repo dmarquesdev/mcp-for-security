@@ -1,0 +1,10 @@
+get
+post
+headers
+status
+ip
+robots.txt
+anything
+json
+html
+xml

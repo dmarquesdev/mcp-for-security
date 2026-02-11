@@ -1,0 +1,17 @@
+{
+  "name": "test-e2e",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "tsc",
+    "test": "node --test --test-concurrency=1 --test-timeout=120000 'build/tests/*.e2e.js'",
+    "test:smoke": "node --test --test-timeout=60000 'build/tests/smoke.e2e.js'"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.17.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "typescript": "^5.8.2"
+  }
+}
