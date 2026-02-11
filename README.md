@@ -22,11 +22,14 @@ Run all 28 MCP servers behind a single Nginx gateway using Docker Compose:
 ```bash
 docker compose up                             # Start gateway + all servers
 docker compose up gateway nmap httpx nuclei    # Start gateway + specific tools
+docker compose --profile e2e up -d            # Start all servers + E2E test targets
 ```
 
 Access tools via the gateway at `http://localhost:8000/<tool>` (e.g. `http://localhost:8000/nmap`).
 
 Service discovery: `GET http://localhost:8000/services`
+
+The `--profile e2e` flag additionally starts test target containers: **httpbin** (8081), **DVWA** (8082), and **WordPress** (8083) for end-to-end testing. Docker images are built from categorized Dockerfiles in `docker/` (e.g. `Dockerfile.go`, `Dockerfile.system`, `Dockerfile.python-pip`, `Dockerfile.api`, etc.).
 
 Generate client config for the gateway:
 ```bash
@@ -171,6 +174,8 @@ All servers depend on a shared utility library that provides:
 - **`truncateOutput()`** — Output length limiting with truncation notice
 - **`startServer()`** — Dual transport bootstrap (stdio default, HTTP via `--transport http --port N`)
 - **`getEnvOrArg()`** — Credential helper that prefers environment variables over CLI arguments
+- **`TIMEOUT_SCHEMA`** / **`buildSpawnOptions()`** — Client-configurable execution timeout schema (Zod field to spread into tool schemas) and option builder that converts `timeoutSeconds` + `extra.signal` into `SpawnOptions`
+- **`loadenv`** — Centralized `.env` credential loading (auto-imported by `mcp-shared`). Set `MCP_ENV_FILE` for explicit path when CWD differs from repo root.
 
 ### Standard Server Pattern
 
@@ -179,7 +184,7 @@ Every spawn-based server follows this pattern:
 ```typescript
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { secureSpawn, startServer, getToolArgs, formatToolResult } from "mcp-shared";
+import { secureSpawn, startServer, getToolArgs, formatToolResult, TIMEOUT_SCHEMA, buildSpawnOptions } from "mcp-shared";
 
 const args = getToolArgs("my-tool-mcp <binary path>");
 
@@ -188,9 +193,9 @@ const server = new McpServer({ name: "my-tool", version: "1.0.0" });
 server.tool(
     "do-my-tool",                    // Convention: do-<toolname>
     "Tool description",
-    { target: z.string().describe("Target") },
-    async ({ target }) => {
-        const result = await secureSpawn(args[0], [target]);
+    { target: z.string().describe("Target"), ...TIMEOUT_SCHEMA },
+    async ({ target, timeoutSeconds }, extra) => {
+        const result = await secureSpawn(args[0], [target], buildSpawnOptions(extra, { timeoutSeconds }));
         return formatToolResult(result, { toolName: "my-tool" });
     },
 );
@@ -256,8 +261,9 @@ The project uses TypeScript with npm workspaces and the Model Context Protocol S
 Install all dependencies and build the shared library:
 ```bash
 npm install                                    # Install all workspace dependencies
-npm -w mcp-shared run build                    # Build the shared library
-npm -w test-helpers run build                  # Build test helpers
+npm run build:shared                           # Build the shared library
+npm run build:helpers                          # Build test helpers
+cp .env.example .env                           # Configure credentials (MobSF, GitHub, AWS, etc.)
 ```
 
 ### Testing
@@ -273,6 +279,12 @@ npm -w nmap-mcp run build && npm -w nmap-mcp test
 
 # Run only mcp-shared unit tests
 npm -w mcp-shared run build && npm -w mcp-shared test
+
+# Run E2E tests (requires Docker containers running)
+npm run test:e2e
+
+# Run E2E smoke tests only (healthchecks)
+npm run test:e2e:smoke
 ```
 
 Test utilities are provided by the `packages/test-helpers/` package. See `CLAUDE.md` for details on writing new server tests.

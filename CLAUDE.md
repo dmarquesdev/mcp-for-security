@@ -11,7 +11,7 @@ A monorepo of 28 MCP (Model Context Protocol) server implementations that wrap p
 ```
 /
   packages/               # Shared libraries
-    mcp-shared/           # Core utilities (spawn, sanitize, transport, etc.)
+    mcp-shared/           # Core utilities (spawn, sanitize, transport, env, etc.)
     test-helpers/         # Test utilities (mock spawn, test server factory)
   servers/                # All 28 MCP server implementations
     nmap-mcp/
@@ -19,8 +19,10 @@ A monorepo of 28 MCP (Model Context Protocol) server implementations that wrap p
     nuclei-mcp/
     ...25 more...
   test-integration/       # Integration tests
-  docker/                 # Dockerfiles and Nginx config
+  test-e2e/               # E2E tests against live Docker containers
+  docker/                 # Categorized Dockerfiles, Nginx config, e2e-wordlists
   scripts/                # Build and test scripts
+  .env.example            # Environment variable template for credentials
   tsconfig.base.json      # Shared TypeScript config (all packages extend this)
 ```
 
@@ -35,7 +37,8 @@ npm install                                    # Install all workspace deps from
 
 ### Build the shared library (must be built first)
 ```bash
-npm -w mcp-shared run build                    # Or: cd packages/mcp-shared && npm run build
+npm run build:shared                           # Alias for: npm -w mcp-shared run build
+npm run build:helpers                          # Alias for: npm -w test-helpers run build
 ```
 All servers depend on `mcp-shared` via npm workspaces. Build it before building any server.
 
@@ -62,8 +65,36 @@ Iterates all `servers/*-mcp/` directories, runs each `build.sh`, then generates 
 docker compose build                          # Build all images
 docker compose up                             # Start gateway + all 28 servers
 docker compose up gateway nmap httpx nuclei    # Start gateway + specific tools
+docker compose --profile e2e up -d            # Start all servers + E2E test targets
 ```
 Per-server multi-stage Docker images behind an Nginx gateway at `localhost:8000`. Each tool runs in its own container on internal port 3000. Gateway routes by URL path (e.g. `http://localhost:8000/nmap`).
+
+**Categorized Dockerfiles** in `docker/`:
+
+| Dockerfile | Serves | Tools |
+|------------|--------|-------|
+| `Dockerfile.go` | 13 Go tools | alterx, amass, assetfinder, cero, ffuf, github-subdomains, gobuster, gowitness, httpx, katana, nuclei, subfinder, waybackurls |
+| `Dockerfile.system` | 3 system tools | nmap, masscan, sslscan |
+| `Dockerfile.python-pip` | 2 pip tools | arjun, scoutsuite |
+| `Dockerfile.python-git` | 3 git-cloned tools | commix, smuggler, sqlmap |
+| `Dockerfile.ruby` | 1 Ruby tool | wpscan |
+| `Dockerfile.shell` | 1 shell tool | testssl |
+| `Dockerfile.seclists` | 1 wordlist tool | seclists |
+| `Dockerfile.shuffledns` | 1 DNS tool | shuffledns |
+| `Dockerfile.api` | 3 API-only tools | crtsh, http-headers-security, mobsf |
+| `Dockerfile.gateway` | Nginx gateway | Reverse proxy + service discovery |
+
+**Service discovery:** `GET http://localhost:8000/services` returns `docker/services.json` listing all 28 tools.
+
+**E2E test targets** (activated via `--profile e2e`):
+
+| Target | Port | Purpose |
+|--------|------|---------|
+| httpbin | 8081 | HTTP request/response testing |
+| DVWA | 8082 | Vulnerable web application |
+| WordPress | 8083 | WordPress instance for WPScan |
+
+**E2E wordlists:** `docker/e2e-wordlists/` — lightweight wordlists mounted into ffuf, gobuster, and shuffledns containers.
 
 ### Generate gateway-aware client config
 ```bash
@@ -120,13 +151,21 @@ npm -w mcp-shared run build && npm -w mcp-shared test
 cd test-integration && npm run build && npm test
 ```
 
-### Test architecture (three tiers)
+### Run E2E tests (requires Docker containers running)
+```bash
+npm run test:e2e                               # Build + run all E2E tests
+npm run test:e2e:smoke                         # Healthcheck-only E2E tests
+```
+E2E tests require `docker compose --profile e2e up -d` to be running. Tests connect to the gateway over HTTP and execute real tool invocations against live target containers.
+
+### Test architecture (four tiers)
 
 | Tier | Location | What it tests | Mechanism |
 |------|----------|---------------|-----------|
-| Unit | `packages/mcp-shared/src/__tests__/` | All 7 shared modules (spawn, args, env, sanitize, result, transport, timeout) | Real commands (`echo`, `node -e`) for spawn; `process.argv`/`process.env` manipulation for args/env |
+| Unit | `packages/mcp-shared/src/__tests__/` | All 8 shared modules (spawn, args, env, sanitize, result, transport, timeout, loadenv) | Real commands (`echo`, `node -e`) for spawn; `process.argv`/`process.env` manipulation for args/env |
 | Server | `servers/<tool>-mcp/src/__tests__/` | Tool registration, Zod schemas, arg construction, response formatting | `InMemoryTransport` + mock `secureSpawn` — no real security tools needed |
 | Integration | `test-integration/src/` | Full MCP protocol cycle with real `secureSpawn` | `InMemoryTransport` with real `echo` command |
+| E2E | `test-e2e/src/tests/` | Full tool execution against live Docker containers via HTTP gateway | Real MCP calls over HTTP to gateway; requires `docker compose --profile e2e up` |
 
 ### Test helpers (`packages/test-helpers/`)
 
@@ -215,6 +254,7 @@ All 28 servers import from the `mcp-shared` local package:
 | `args.ts` | `getToolArgs()` | Standardized CLI arg parsing — strips framework flags, validates min args, exits with usage on error |
 | `result.ts` | `formatToolResult()` | Standardized MCP response — throws on nonzero exit, composes stdout/stderr, optional ANSI stripping |
 | `timeout.ts` | `TIMEOUT_SCHEMA`, `buildSpawnOptions()` | Client-configurable execution timeout — `TIMEOUT_SCHEMA` is a Zod field to spread into tool schemas, `buildSpawnOptions()` converts `timeoutSeconds` + `extra.signal` into `SpawnOptions` |
+| `loadenv.ts` | (side-effect import) | Centralized `.env` loading via dotenv — `MCP_ENV_FILE` env var for explicit path, falls back to `cwd/.env`. Auto-imported by `index.ts` barrel |
 
 ### MCP Server Pattern (all servers follow this)
 
@@ -255,6 +295,7 @@ Every server in `src/index.ts`:
 - **CLI args:** Use `getToolArgs()` instead of manual `process.argv.slice(2)` parsing
 - **Logging:** `console.error` for server status (stdout reserved for MCP protocol)
 - **Spawn stdin:** Always detached via `stdio: ['ignore', 'pipe', 'pipe']` — critical for ProjectDiscovery Go tools that block on pipe stdin
+- **Environment config:** Servers auto-load `.env` via `loadenv.ts` (side-effect import in `mcp-shared`). Set `MCP_ENV_FILE` to specify an explicit path (useful when CWD differs from repo root). See `.env.example` for all supported variables.
 
 ## Adding a New MCP Server
 
