@@ -1,15 +1,8 @@
-# --- Stage 1: Build mcp-shared ---
-FROM node:22-slim AS shared-builder
-WORKDIR /build/mcp-shared
-COPY tsconfig.base.json /tsconfig.base.json
-COPY packages/mcp-shared/package*.json ./
-COPY packages/mcp-shared/tsconfig.json ./
-COPY packages/mcp-shared/src/ src/
-RUN npm config set fetch-retries 5 && npm config set fetch-retry-maxtimeout 120000 && \
-    for i in 1 2 3 4 5; do npm install && break || sleep 15; done && npm run build
+# --- Stage 1: Pre-built mcp-shared (from shared-builder image) ---
+FROM mcp-shared-builder:latest AS shared-builder
 
 # --- Stage 2: Build server TypeScript ---
-FROM node:22-slim AS server-builder
+FROM node:22.13.1-slim AS server-builder
 ARG SERVER_DIR
 WORKDIR /build/server
 COPY tsconfig.base.json /tsconfig.base.json
@@ -24,18 +17,27 @@ COPY ${SERVER_DIR}/src/ src/
 RUN npm run build
 
 # --- Stage 3: Build Go binary ---
-FROM golang:1.25-bookworm AS go-builder
+FROM golang:1.25.0-bookworm AS go-builder
 ARG GO_PACKAGE
 ARG GO_VERSION=latest
 RUN for i in 1 2 3 4 5; do go install ${GO_PACKAGE}@${GO_VERSION} && break || sleep 15; done
 
 # --- Stage 4: Runtime ---
-FROM node:22-slim
+FROM node:22.13.1-slim
 ARG TOOL_BIN
 WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+RUN adduser --system --no-create-home --uid 1001 mcpuser
+ENV HOME=/tmp
+ENV XDG_CONFIG_HOME=/tmp/.config
+ENV XDG_DATA_HOME=/tmp/.data
 COPY --from=go-builder /go/bin/${TOOL_BIN} /usr/local/bin/${TOOL_BIN}
 COPY --from=server-builder /build/server/build ./build
 COPY --from=server-builder /build/server/node_modules ./node_modules
 COPY --from=server-builder /build/server/package.json ./
+RUN chown -R mcpuser:nogroup /app && \
+    npm uninstall -g npm && rm -rf /usr/local/lib/node_modules/npm || true
+USER mcpuser
 EXPOSE 3000
 ENTRYPOINT ["node", "build/index.js"]

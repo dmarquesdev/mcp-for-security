@@ -7,7 +7,42 @@ x-healthcheck: &healthcheck
 x-restart: &restart
   restart: unless-stopped
 
+x-resource-limits: &resource-limits
+  mem_limit: 512m
+  cpus: "1.0"
+  pids_limit: 100
+
+x-resource-limits-heavy: &resource-limits-heavy
+  mem_limit: 1g
+  cpus: "2.0"
+  pids_limit: 200
+
+x-security: &security
+  read_only: true
+  tmpfs:
+    - /tmp
+    - /home/mcpuser
+  security_opt:
+    - no-new-privileges:true
+
+networks:
+  gateway:
+    driver: bridge
+  tools:
+    driver: bridge
+  e2e-targets:
+    driver: bridge
+    internal: true
+
 services:
+  # ─── Shared Builder (build-only, never started) ───
+  shared-builder:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.shared
+    image: mcp-shared-builder:latest
+    profiles: ["build-only"]
+
   # ─── Gateway ───
   gateway:
     build:
@@ -15,6 +50,11 @@ services:
       dockerfile: docker/Dockerfile.gateway
     ports:
       - "${GATEWAY_PORT:-8000}:8000"
+    environment:
+      - MCP_API_KEY=${MCP_API_KEY:-changeme}
+    networks:
+      - gateway
+      - tools
     <<: *restart
 
   # ═══════════════════════════════════════════
@@ -33,8 +73,9 @@ services:
     expose: ["3000"]
     healthcheck:
       <<: *healthcheck
-      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
-    <<: *restart
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/healthz"]
+    networks: ["tools"]
+    <<: [*restart, *resource-limits, *security]
 
   amass:
     build:
@@ -47,10 +88,14 @@ services:
         TOOL_BIN: amass
     command: ["/usr/local/bin/amass", "--transport", "http", "--port", "3000"]
     expose: ["3000"]
+    env_file:
+      - path: .env
+        required: false
     healthcheck:
       <<: *healthcheck
-      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
-    <<: *restart
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/healthz"]
+    networks: ["tools"]
+    <<: [*restart, *resource-limits-heavy, *security]
 
   asnmap:
     build:
@@ -62,12 +107,16 @@ services:
         TOOL_BIN: asnmap
     command: ["/usr/local/bin/asnmap", "--transport", "http", "--port", "3000"]
     expose: ["3000"]
+    env_file:
+      - path: .env
+        required: false
     environment:
       - PDCP_API_KEY=${PDCP_API_KEY:-}
     healthcheck:
       <<: *healthcheck
-      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
-    <<: *restart
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/healthz"]
+    networks: ["tools"]
+    <<: [*restart, *resource-limits, *security]
 
   assetfinder:
     build:
@@ -79,10 +128,14 @@ services:
         TOOL_BIN: assetfinder
     command: ["/usr/local/bin/assetfinder", "--transport", "http", "--port", "3000"]
     expose: ["3000"]
+    env_file:
+      - path: .env
+        required: false
     healthcheck:
       <<: *healthcheck
-      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
-    <<: *restart
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/healthz"]
+    networks: ["tools"]
+    <<: [*restart, *resource-limits, *security]
 
   cero:
     build:
@@ -96,8 +149,9 @@ services:
     expose: ["3000"]
     healthcheck:
       <<: *healthcheck
-      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
-    <<: *restart
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/healthz"]
+    networks: ["tools"]
+    <<: [*restart, *resource-limits, *security]
 
   ffuf:
     build:
@@ -113,8 +167,9 @@ services:
       - ./docker/e2e-wordlists:/wordlists:ro
     healthcheck:
       <<: *healthcheck
-      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
-    <<: *restart
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/healthz"]
+    networks: ["tools"]
+    <<: [*restart, *resource-limits-heavy, *security]
 
   github-subdomains:
     build:
@@ -126,10 +181,14 @@ services:
         TOOL_BIN: github-subdomains
     command: ["/usr/local/bin/github-subdomains", "--transport", "http", "--port", "3000"]
     expose: ["3000"]
+    env_file:
+      - path: .env
+        required: false
     healthcheck:
       <<: *healthcheck
-      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
-    <<: *restart
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/healthz"]
+    networks: ["tools"]
+    <<: [*restart, *resource-limits, *security]
 
   gobuster:
     build:
@@ -145,8 +204,9 @@ services:
       - ./docker/e2e-wordlists:/wordlists:ro
     healthcheck:
       <<: *healthcheck
-      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
-    <<: *restart
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/healthz"]
+    networks: ["tools"]
+    <<: [*restart, *resource-limits-heavy, *security]
 
   gowitness:
     build:
@@ -160,8 +220,9 @@ services:
     expose: ["3000"]
     healthcheck:
       <<: *healthcheck
-      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
-    <<: *restart
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/healthz"]
+    networks: ["tools"]
+    <<: [*restart, *resource-limits, *security]
 
   httpx:
     build:
@@ -175,8 +236,9 @@ services:
     expose: ["3000"]
     healthcheck:
       <<: *healthcheck
-      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
-    <<: *restart
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/healthz"]
+    networks: ["tools"]
+    <<: [*restart, *resource-limits, *security]
 
   katana:
     build:
@@ -190,8 +252,9 @@ services:
     expose: ["3000"]
     healthcheck:
       <<: *healthcheck
-      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
-    <<: *restart
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/healthz"]
+    networks: ["tools"]
+    <<: [*restart, *resource-limits, *security]
 
   nuclei:
     build:
@@ -203,10 +266,14 @@ services:
         TOOL_BIN: nuclei
     command: ["/usr/local/bin/nuclei", "--transport", "http", "--port", "3000"]
     expose: ["3000"]
+    env_file:
+      - path: .env
+        required: false
     healthcheck:
       <<: *healthcheck
-      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
-    <<: *restart
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/healthz"]
+    networks: ["tools"]
+    <<: [*restart, *resource-limits-heavy, *security]
 
   subfinder:
     build:
@@ -218,10 +285,14 @@ services:
         TOOL_BIN: subfinder
     command: ["/usr/local/bin/subfinder", "--transport", "http", "--port", "3000"]
     expose: ["3000"]
+    env_file:
+      - path: .env
+        required: false
     healthcheck:
       <<: *healthcheck
-      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
-    <<: *restart
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/healthz"]
+    networks: ["tools"]
+    <<: [*restart, *resource-limits, *security]
 
   waybackurls:
     build:
@@ -235,8 +306,9 @@ services:
     expose: ["3000"]
     healthcheck:
       <<: *healthcheck
-      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
-    <<: *restart
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/healthz"]
+    networks: ["tools"]
+    <<: [*restart, *resource-limits, *security]
 
   shuffledns:
     build:
@@ -248,8 +320,9 @@ services:
       - ./docker/e2e-wordlists:/wordlists:ro
     healthcheck:
       <<: *healthcheck
-      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
-    <<: *restart
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/healthz"]
+    networks: ["tools"]
+    <<: [*restart, *resource-limits, *security]
 
   # ═══════════════════════════════════════════
   # System Tools (3)
@@ -264,10 +337,13 @@ services:
         APT_PACKAGES: nmap
     command: ["/usr/bin/nmap", "--transport", "http", "--port", "3000"]
     expose: ["3000"]
+    cap_drop: ["ALL"]
+    cap_add: ["NET_RAW", "NET_ADMIN"]
     healthcheck:
       <<: *healthcheck
-      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
-    <<: *restart
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/healthz"]
+    networks: ["tools"]
+    <<: [*restart, *resource-limits, *security]
 
   masscan:
     build:
@@ -278,10 +354,13 @@ services:
         APT_PACKAGES: masscan
     command: ["/usr/bin/masscan", "--transport", "http", "--port", "3000"]
     expose: ["3000"]
+    cap_drop: ["ALL"]
+    cap_add: ["NET_RAW", "NET_ADMIN"]
     healthcheck:
       <<: *healthcheck
-      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
-    <<: *restart
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/healthz"]
+    networks: ["tools"]
+    <<: [*restart, *resource-limits-heavy, *security]
 
   sslscan:
     build:
@@ -294,8 +373,9 @@ services:
     expose: ["3000"]
     healthcheck:
       <<: *healthcheck
-      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
-    <<: *restart
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/healthz"]
+    networks: ["tools"]
+    <<: [*restart, *resource-limits, *security]
 
   # ═══════════════════════════════════════════
   # Python Pip Tools (2)
@@ -312,8 +392,9 @@ services:
     expose: ["3000"]
     healthcheck:
       <<: *healthcheck
-      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
-    <<: *restart
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/healthz"]
+    networks: ["tools"]
+    <<: [*restart, *resource-limits, *security]
 
   scoutsuite:
     build:
@@ -324,10 +405,14 @@ services:
         PIP_PACKAGE: scoutsuite
     command: ["/opt/venv/bin/scout", "--transport", "http", "--port", "3000"]
     expose: ["3000"]
+    env_file:
+      - path: .env
+        required: false
     healthcheck:
       <<: *healthcheck
-      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
-    <<: *restart
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/healthz"]
+    networks: ["tools"]
+    <<: [*restart, *resource-limits, *security]
 
   # ═══════════════════════════════════════════
   # Python Git Tools (3)
@@ -345,8 +430,9 @@ services:
     expose: ["3000"]
     healthcheck:
       <<: *healthcheck
-      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
-    <<: *restart
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/healthz"]
+    networks: ["tools"]
+    <<: [*restart, *resource-limits, *security]
 
   smuggler:
     build:
@@ -360,8 +446,9 @@ services:
     expose: ["3000"]
     healthcheck:
       <<: *healthcheck
-      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
-    <<: *restart
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/healthz"]
+    networks: ["tools"]
+    <<: [*restart, *resource-limits, *security]
 
   sqlmap:
     build:
@@ -375,8 +462,9 @@ services:
     expose: ["3000"]
     healthcheck:
       <<: *healthcheck
-      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
-    <<: *restart
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/healthz"]
+    networks: ["tools"]
+    <<: [*restart, *resource-limits, *security]
 
   # ═══════════════════════════════════════════
   # Ruby Tools (1)
@@ -391,10 +479,14 @@ services:
         GEM_PACKAGE: wpscan
     command: ["wpscan", "--transport", "http", "--port", "3000"]
     expose: ["3000"]
+    env_file:
+      - path: .env
+        required: false
     healthcheck:
       <<: *healthcheck
-      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
-    <<: *restart
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/healthz"]
+    networks: ["tools"]
+    <<: [*restart, *resource-limits-heavy, *security]
 
   # ═══════════════════════════════════════════
   # Shell Tools (1)
@@ -412,8 +504,9 @@ services:
     expose: ["3000"]
     healthcheck:
       <<: *healthcheck
-      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
-    <<: *restart
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/healthz"]
+    networks: ["tools"]
+    <<: [*restart, *resource-limits, *security]
 
   # ═══════════════════════════════════════════
   # SecLists (1)
@@ -427,8 +520,9 @@ services:
     expose: ["3000"]
     healthcheck:
       <<: *healthcheck
-      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
-    <<: *restart
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/healthz"]
+    networks: ["tools"]
+    <<: [*restart, *resource-limits, *security]
 
   # ═══════════════════════════════════════════
   # API-Only Tools (3)
@@ -444,8 +538,9 @@ services:
     expose: ["3000"]
     healthcheck:
       <<: *healthcheck
-      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
-    <<: *restart
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/healthz"]
+    networks: ["tools"]
+    <<: [*restart, *resource-limits, *security]
 
   http-headers-security:
     build:
@@ -457,8 +552,9 @@ services:
     expose: ["3000"]
     healthcheck:
       <<: *healthcheck
-      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
-    <<: *restart
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/healthz"]
+    networks: ["tools"]
+    <<: [*restart, *resource-limits, *security]
 
   mobsf:
     build:
@@ -473,8 +569,9 @@ services:
       - MOBSF_URL=${MOBSF_URL:-}
     healthcheck:
       <<: *healthcheck
-      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
-    <<: *restart
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/healthz"]
+    networks: ["tools"]
+    <<: [*restart, *resource-limits, *security]
 
   # ═══════════════════════════════════════════
   # E2E Test Targets
@@ -487,6 +584,9 @@ services:
     healthcheck:
       <<: *healthcheck
       test: ["CMD-SHELL", "curl -sf http://localhost:80/ || exit 1"]
+    networks:
+      - tools
+      - e2e-targets
     <<: *restart
 
   dvwa:
@@ -501,6 +601,9 @@ services:
     healthcheck:
       <<: *healthcheck
       test: ["CMD-SHELL", "curl -sf http://localhost:80/ || exit 1"]
+    networks:
+      - tools
+      - e2e-targets
     <<: *restart
 
   dvwa-db:
@@ -508,13 +611,14 @@ services:
     expose: ["3306"]
     profiles: ["e2e"]
     environment:
-      - MYSQL_ROOT_PASSWORD=dvwa
+      - MYSQL_ROOT_PASSWORD=${DVWA_DB_ROOT_PASSWORD:-dvwa}
       - MYSQL_DATABASE=dvwa
       - MYSQL_USER=dvwa
-      - MYSQL_PASSWORD=p@ssw0rd
+      - MYSQL_PASSWORD=${DVWA_DB_PASSWORD:-p@ssw0rd}
     healthcheck:
       <<: *healthcheck
       test: ["CMD-SHELL", "mysqladmin ping -h localhost"]
+    networks: ["e2e-targets"]
     <<: *restart
 
   wordpress:
@@ -524,7 +628,7 @@ services:
     environment:
       - WORDPRESS_DB_HOST=wordpress-db
       - WORDPRESS_DB_USER=wp
-      - WORDPRESS_DB_PASSWORD=wp
+      - WORDPRESS_DB_PASSWORD=${WORDPRESS_DB_PASSWORD:-wp}
       - WORDPRESS_DB_NAME=wordpress
     depends_on:
       wordpress-db:
@@ -532,6 +636,9 @@ services:
     healthcheck:
       <<: *healthcheck
       test: ["CMD-SHELL", "curl -sf http://localhost:80/ || exit 1"]
+    networks:
+      - tools
+      - e2e-targets
     <<: *restart
 
   wordpress-db:
@@ -539,11 +646,12 @@ services:
     expose: ["3306"]
     profiles: ["e2e"]
     environment:
-      - MYSQL_ROOT_PASSWORD=wp
+      - MYSQL_ROOT_PASSWORD=${WORDPRESS_DB_ROOT_PASSWORD:-wp}
       - MYSQL_DATABASE=wordpress
       - MYSQL_USER=wp
-      - MYSQL_PASSWORD=wp
+      - MYSQL_PASSWORD=${WORDPRESS_DB_PASSWORD:-wp}
     healthcheck:
       <<: *healthcheck
       test: ["CMD-SHELL", "mysqladmin ping -h localhost"]
+    networks: ["e2e-targets"]
     <<: *restart

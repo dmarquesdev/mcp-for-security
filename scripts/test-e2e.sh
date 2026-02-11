@@ -1,9 +1,19 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-GATEWAY_URL="${E2E_GATEWAY_URL:-http://localhost:8000}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# Source .env for MCP_API_KEY and other variables
+if [ -f "$ROOT_DIR/.env" ]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "$ROOT_DIR/.env"
+  set +a
+fi
+
+GATEWAY_URL="${E2E_GATEWAY_URL:-http://localhost:8000}"
+MCP_API_KEY="${MCP_API_KEY:-}"
 
 echo "═══════════════════════════════════════════"
 echo "  MCP E2E Test Suite"
@@ -43,7 +53,7 @@ SERVICES=(alterx amass arjun assetfinder cero commix crtsh ffuf github-subdomain
 
 for svc in "${SERVICES[@]}"; do
   TOTAL=$((TOTAL + 1))
-  if curl -sf --max-time 3 "$GATEWAY_URL/$svc/healthz" > /dev/null 2>&1; then
+  if curl -sf --max-time 3 ${MCP_API_KEY:+-H "X-API-Key: $MCP_API_KEY"} "$GATEWAY_URL/$svc/healthz" > /dev/null 2>&1; then
     HEALTHY=$((HEALTHY + 1))
   else
     echo "  WARN: $svc is not healthy (tests will be skipped)"
@@ -63,4 +73,4 @@ echo ""
 # Run tests serially
 echo "Running E2E tests..."
 echo ""
-node --test --test-concurrency=1 --test-timeout=120000 "$ROOT_DIR/test-e2e/build/tests/"*.e2e.js
+MCP_API_KEY="$MCP_API_KEY" node --test --test-concurrency=1 --test-timeout=120000 "$ROOT_DIR/test-e2e/build/tests/"*.e2e.js

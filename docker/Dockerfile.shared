@@ -1,0 +1,10 @@
+# Shared mcp-shared builder image — built once, referenced by all tool Dockerfiles.
+# Build with: docker compose build shared-builder
+FROM node:22.13.1-slim
+WORKDIR /build/mcp-shared
+COPY tsconfig.base.json /tsconfig.base.json
+COPY packages/mcp-shared/package*.json ./
+COPY packages/mcp-shared/tsconfig.json ./
+COPY packages/mcp-shared/src/ src/
+RUN npm config set fetch-retries 5 && npm config set fetch-retry-maxtimeout 120000 && \
+    for i in 1 2 3 4 5; do npm install && break || sleep 15; done && npm run build

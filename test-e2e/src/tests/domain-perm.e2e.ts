@@ -6,10 +6,10 @@ import { shouldSkip, TestCategory } from "../helpers/categories.js";
 
 describe("domain permutation", () => {
   describe("alterx", () => {
-    it("generates permutations for api.example.com", { timeout: 30000 }, async () => {
+    it("generates permutations for api.example.com", { timeout: 30000 }, async (t) => {
       const skip = await shouldSkip(TestCategory.SELF_CONTAINED);
-      if (skip) return;
-      if (!(await isServiceHealthy("alterx"))) return;
+      if (skip) { t.skip(skip); return; }
+      if (!(await isServiceHealthy("alterx"))) { t.skip("alterx not healthy"); return; }
       const result = await callTool("alterx", "do-alterx", {
         domain: "api.example.com",
         args: ["-p", "{{word}}.{{suffix}}"],

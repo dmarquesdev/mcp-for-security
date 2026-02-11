@@ -27,6 +27,15 @@ tmp
 **/src/__tests__
 test-helpers
 test-integration
+test-e2e
+
+# Scripts (not needed in images)
+scripts
+
+# Documentation (not needed in images)
+*.md
+docker-compose.yml
+.env.example
 
 # Legacy monolithic Dockerfile
 docker/Dockerfile.legacy

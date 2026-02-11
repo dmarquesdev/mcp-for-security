@@ -8,10 +8,10 @@ import { ensureDvwaSetup } from "../helpers/dvwa-setup.js";
 
 describe("injection testing tools", () => {
   describe("sqlmap", () => {
-    it("runs against DVWA", { timeout: 120000 }, async () => {
+    it("runs against DVWA", { timeout: 120000 }, async (t) => {
       const skip = await shouldSkip(TestCategory.VULN_DVWA);
-      if (skip) return;
-      if (!(await isServiceHealthy("sqlmap"))) return;
+      if (skip) { t.skip(skip); return; }
+      if (!(await isServiceHealthy("sqlmap"))) { t.skip("sqlmap not healthy"); return; }
       await ensureDvwaSetup();
       const result = await callTool("sqlmap", "do-sqlmap", {
         target: TARGETS.DVWA,
@@ -22,10 +22,10 @@ describe("injection testing tools", () => {
   });
 
   describe("commix", () => {
-    it("runs against DVWA", { timeout: 120000 }, async () => {
+    it("runs against DVWA", { timeout: 120000 }, async (t) => {
       const skip = await shouldSkip(TestCategory.VULN_DVWA);
-      if (skip) return;
-      if (!(await isServiceHealthy("commix"))) return;
+      if (skip) { t.skip(skip); return; }
+      if (!(await isServiceHealthy("commix"))) { t.skip("commix not healthy"); return; }
       await ensureDvwaSetup();
       const result = await callTool("commix", "do-commix", {
         target: TARGETS.DVWA,

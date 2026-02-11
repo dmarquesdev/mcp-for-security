@@ -1,15 +1,8 @@
-# --- Stage 1: Build mcp-shared ---
-FROM node:22-slim AS shared-builder
-WORKDIR /build/mcp-shared
-COPY tsconfig.base.json /tsconfig.base.json
-COPY packages/mcp-shared/package*.json ./
-COPY packages/mcp-shared/tsconfig.json ./
-COPY packages/mcp-shared/src/ src/
-RUN npm config set fetch-retries 5 && npm config set fetch-retry-maxtimeout 120000 && \
-    for i in 1 2 3 4 5; do npm install && break || sleep 15; done && npm run build
+# --- Stage 1: Pre-built mcp-shared (from shared-builder image) ---
+FROM mcp-shared-builder:latest AS shared-builder
 
 # --- Stage 2: Build server TypeScript ---
-FROM node:22-slim AS server-builder
+FROM node:22.13.1-slim AS server-builder
 ARG SERVER_DIR
 WORKDIR /build/server
 COPY tsconfig.base.json /tsconfig.base.json
@@ -24,15 +17,19 @@ COPY ${SERVER_DIR}/src/ src/
 RUN npm run build
 
 # --- Stage 3: Runtime ---
-FROM node:22-slim
+FROM node:22.13.1-slim
 ARG GEM_PACKAGE
 WORKDIR /app
-RUN apt-get update && apt-get install -y --no-install-recommends ruby-full build-essential \
+RUN apt-get update && apt-get install -y --no-install-recommends curl ruby-full build-essential \
     && gem install ${GEM_PACKAGE} --no-document \
     && apt-get purge -y build-essential && apt-get autoremove -y \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
+RUN adduser --system --no-create-home --uid 1001 mcpuser
 COPY --from=server-builder /build/server/build ./build
 COPY --from=server-builder /build/server/node_modules ./node_modules
 COPY --from=server-builder /build/server/package.json ./
+RUN chown -R mcpuser:nogroup /app && \
+    npm uninstall -g npm && rm -rf /usr/local/lib/node_modules/npm || true
+USER mcpuser
 EXPOSE 3000
 ENTRYPOINT ["node", "build/index.js"]

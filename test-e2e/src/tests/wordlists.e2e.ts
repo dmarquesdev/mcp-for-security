@@ -6,10 +6,10 @@ import { shouldSkip, TestCategory } from "../helpers/categories.js";
 
 describe("wordlist tools", () => {
   describe("seclists", () => {
-    it("lists available categories", { timeout: 30000 }, async () => {
+    it("lists available categories", { timeout: 30000 }, async (t) => {
       const skip = await shouldSkip(TestCategory.SELF_CONTAINED);
-      if (skip) return;
-      if (!(await isServiceHealthy("seclists"))) return;
+      if (skip) { t.skip(skip); return; }
+      if (!(await isServiceHealthy("seclists"))) { t.skip("seclists not healthy"); return; }
       const result = await callTool("seclists", "do-seclists-list-categories", {});
       assertContains(result, "Discovery");
     });

@@ -7,10 +7,10 @@ import { TARGETS } from "../helpers/targets.js";
 
 describe("web probing", () => {
   describe("httpx", () => {
-    it(`probes ${TARGETS.EXAMPLE} and returns HTTP info`, { timeout: 60000 }, async () => {
+    it(`probes ${TARGETS.EXAMPLE} and returns HTTP info`, { timeout: 60000 }, async (t) => {
       const skip = await shouldSkip(TestCategory.PUBLIC);
-      if (skip) return;
-      if (!(await isServiceHealthy("httpx"))) return;
+      if (skip) { t.skip(skip); return; }
+      if (!(await isServiceHealthy("httpx"))) { t.skip("httpx not healthy"); return; }
       const result = await callTool("httpx", "do-httpx", {
         target: [TARGETS.EXAMPLE],
       });
@@ -19,10 +19,10 @@ describe("web probing", () => {
   });
 
   describe("katana", () => {
-    it(`crawls ${TARGETS.EXAMPLE_HTTPS}`, { timeout: 90000 }, async () => {
+    it(`crawls ${TARGETS.EXAMPLE_HTTPS}`, { timeout: 90000 }, async (t) => {
       const skip = await shouldSkip(TestCategory.PUBLIC);
-      if (skip) return;
-      if (!(await isServiceHealthy("katana"))) return;
+      if (skip) { t.skip(skip); return; }
+      if (!(await isServiceHealthy("katana"))) { t.skip("katana not healthy"); return; }
       const result = await callTool("katana", "do-katana", {
         target: [TARGETS.EXAMPLE_HTTPS],
         depth: 1,
@@ -32,10 +32,10 @@ describe("web probing", () => {
   });
 
   describe("waybackurls", () => {
-    it("finds archived URLs for scanme.nmap.org", { timeout: 120000 }, async () => {
+    it("finds archived URLs for scanme.nmap.org", { timeout: 120000 }, async (t) => {
       const skip = await shouldSkip(TestCategory.PUBLIC);
-      if (skip) return;
-      if (!(await isServiceHealthy("waybackurls"))) return;
+      if (skip) { t.skip(skip); return; }
+      if (!(await isServiceHealthy("waybackurls"))) { t.skip("waybackurls not healthy"); return; }
       const result = await callTool("waybackurls", "do-waybackurls", {
         target: TARGETS.NMAP_SCANME,
       }, { requestTimeout: 120000 });

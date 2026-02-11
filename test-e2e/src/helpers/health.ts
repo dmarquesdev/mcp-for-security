@@ -1,9 +1,12 @@
 const GATEWAY = process.env.E2E_GATEWAY_URL || "http://localhost:8000";
+const API_KEY = process.env.MCP_API_KEY || "";
+const AUTH_HEADERS: Record<string, string> = API_KEY ? { "X-API-Key": API_KEY } : {};
 
 export async function isServiceHealthy(service: string): Promise<boolean> {
   try {
     const resp = await fetch(`${GATEWAY}/${service}/healthz`, {
       signal: AbortSignal.timeout(5000),
+      headers: AUTH_HEADERS,
     });
     return resp.ok;
   } catch {
@@ -20,6 +23,7 @@ export async function waitForGateway(
     try {
       const resp = await fetch(`${GATEWAY}/`, {
         signal: AbortSignal.timeout(3000),
+        headers: AUTH_HEADERS,
       });
       if (resp.ok || resp.status === 404) return true;
     } catch {

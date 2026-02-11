@@ -7,10 +7,10 @@ import { TARGETS } from "../helpers/targets.js";
 
 describe("screenshot tools", () => {
   describe("gowitness", () => {
-    it(`screenshots ${TARGETS.EXAMPLE_HTTPS}`, { timeout: 60000 }, async () => {
+    it(`screenshots ${TARGETS.EXAMPLE_HTTPS}`, { timeout: 60000 }, async (t) => {
       const skip = await shouldSkip(TestCategory.PUBLIC);
-      if (skip) return;
-      if (!(await isServiceHealthy("gowitness"))) return;
+      if (skip) { t.skip(skip); return; }
+      if (!(await isServiceHealthy("gowitness"))) { t.skip("gowitness not healthy"); return; }
       const result = await callTool("gowitness", "do-gowitness", {
         target: TARGETS.EXAMPLE_HTTPS,
         args: [],

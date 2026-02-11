@@ -9,22 +9,22 @@ describe("smoke — health checks and tool listing", () => {
     assert.ok(gatewayUp, "Gateway is not reachable at " + (process.env.E2E_GATEWAY_URL || "http://localhost:8000"));
   });
 
+  // Small delay between services to avoid gateway rate limiting
+  const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
   for (const service of ALL_SERVICES) {
     describe(service, () => {
-      it(`${service} is healthy`, async () => {
+      it(`${service} is healthy`, async (t) => {
+        await delay(100);
         const healthy = await isServiceHealthy(service);
-        if (!healthy) {
-          // Skip rather than fail — the service might not be started
-          return;
-        }
+        if (!healthy) { t.skip(`${service} not reachable`); return; }
         assert.ok(healthy);
       });
 
-      it(`${service} lists at least one tool`, async () => {
+      it(`${service} lists at least one tool`, async (t) => {
+        await delay(100);
         const healthy = await isServiceHealthy(service);
-        if (!healthy) {
-          return; // skip if not healthy
-        }
+        if (!healthy) { t.skip(`${service} not healthy`); return; }
         const { client, cleanup } = await createE2EClient(service);
         try {
           const tools = await client.listTools();

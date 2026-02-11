@@ -2,13 +2,16 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 
 const GATEWAY = process.env.E2E_GATEWAY_URL || "http://localhost:8000";
+const API_KEY = process.env.MCP_API_KEY || "";
 
 export async function createE2EClient(serviceName: string): Promise<{
   client: Client;
   cleanup: () => Promise<void>;
 }> {
   const url = new URL(`${GATEWAY}/${serviceName}/mcp`);
-  const transport = new StreamableHTTPClientTransport(url);
+  const transport = new StreamableHTTPClientTransport(url, API_KEY ? {
+    requestInit: { headers: { "X-API-Key": API_KEY } },
+  } : undefined);
   const client = new Client({ name: `e2e-${serviceName}`, version: "1.0.0" });
   await client.connect(transport);
   return {

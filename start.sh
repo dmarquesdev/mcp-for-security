@@ -1,4 +1,10 @@
 #!/bin/bash
+# LOCAL NON-DOCKER DEVELOPMENT ONLY
+# This script builds all servers natively (outside Docker) by running each
+# server's build.sh, which installs the underlying security tool, compiles
+# TypeScript, and updates mcp-config.json.
+#
+# For Docker deployments, use: ./scripts/docker-build.sh
 
 echo "[*] Starting all services..."
 

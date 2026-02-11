@@ -7,10 +7,10 @@ import { TARGETS, WORDLISTS } from "../helpers/targets.js";
 
 describe("fuzzers", () => {
   describe("ffuf", () => {
-    it("fuzzes httpbin status endpoint", { timeout: 60000 }, async () => {
+    it("fuzzes httpbin status endpoint", { timeout: 60000 }, async (t) => {
       const skip = await shouldSkip(TestCategory.LOCAL);
-      if (skip) return;
-      if (!(await isServiceHealthy("ffuf"))) return;
+      if (skip) { t.skip(skip); return; }
+      if (!(await isServiceHealthy("ffuf"))) { t.skip("ffuf not healthy"); return; }
       const result = await callTool("ffuf", "do-ffuf", {
         target: TARGETS.HTTPBIN_STATUS_FUZZ,
         args: ["-w", WORDLISTS.COMMON_PATHS, "-mc", "all"],
@@ -20,10 +20,10 @@ describe("fuzzers", () => {
   });
 
   describe("gobuster", () => {
-    it("discovers paths on httpbin", { timeout: 60000 }, async () => {
+    it("discovers paths on httpbin", { timeout: 60000 }, async (t) => {
       const skip = await shouldSkip(TestCategory.LOCAL);
-      if (skip) return;
-      if (!(await isServiceHealthy("gobuster"))) return;
+      if (skip) { t.skip(skip); return; }
+      if (!(await isServiceHealthy("gobuster"))) { t.skip("gobuster not healthy"); return; }
       const result = await callTool("gobuster", "do-gobuster", {
         url: TARGETS.HTTPBIN,
         args: ["dir", "-w", WORDLISTS.COMMON_PATHS],

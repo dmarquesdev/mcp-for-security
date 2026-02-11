@@ -7,10 +7,10 @@ import { TARGETS } from "../helpers/targets.js";
 
 describe("SSL/TLS analysis", () => {
   describe("sslscan", () => {
-    it(`scans ${TARGETS.EXAMPLE_HTTPS} TLS configuration`, { timeout: 60000 }, async () => {
+    it(`scans ${TARGETS.EXAMPLE_HTTPS} TLS configuration`, { timeout: 60000 }, async (t) => {
       const skip = await shouldSkip(TestCategory.PUBLIC);
-      if (skip) return;
-      if (!(await isServiceHealthy("sslscan"))) return;
+      if (skip) { t.skip(skip); return; }
+      if (!(await isServiceHealthy("sslscan"))) { t.skip("sslscan not healthy"); return; }
       const result = await callTool("sslscan", "do-sslscan", {
         target: TARGETS.EXAMPLE_HTTPS,
         sslscan_args: [],
@@ -20,10 +20,10 @@ describe("SSL/TLS analysis", () => {
   });
 
   describe("testssl", () => {
-    it(`checks protocols on ${TARGETS.EXAMPLE_TLS}`, { timeout: 120000 }, async () => {
+    it(`checks protocols on ${TARGETS.EXAMPLE_TLS}`, { timeout: 120000 }, async (t) => {
       const skip = await shouldSkip(TestCategory.PUBLIC);
-      if (skip) return;
-      if (!(await isServiceHealthy("testssl"))) return;
+      if (skip) { t.skip(skip); return; }
+      if (!(await isServiceHealthy("testssl"))) { t.skip("testssl not healthy"); return; }
       const result = await callTool("testssl", "do-testssl-protocols", {
         target: TARGETS.EXAMPLE_TLS,
         args: [],

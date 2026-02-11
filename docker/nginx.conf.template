@@ -1,0 +1,71 @@
+# Increase bucket size for long API key values
+map_hash_bucket_size 128;
+
+# API key auth — substituted at container start via envsubst
+map $http_x_api_key $api_key_valid {
+    default 0;
+    "${MCP_API_KEY}" 1;
+}
+
+# Rate limiting per API key (F14)
+# 50r/s with burst=100 accommodates E2E smoke tests (29 services × ~4 reqs each)
+limit_req_zone $http_x_api_key zone=api_limit:10m rate=50r/s;
+
+# Timeouts tuned for long-running security scans
+proxy_read_timeout 300s;
+proxy_send_timeout 300s;
+proxy_connect_timeout 10s;
+
+# Streaming/SSE support (critical for MCP protocol)
+proxy_buffering off;
+proxy_cache off;
+proxy_http_version 1.1;
+proxy_set_header Connection '';
+proxy_set_header Host $host;
+proxy_set_header X-Real-IP $remote_addr;
+proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+server {
+    listen 8000;
+
+    # --- Service discovery (unauthenticated) ---
+    location = /services {
+        default_type application/json;
+        alias /etc/nginx/services.json;
+    }
+
+    # --- Gateway health (unauthenticated) ---
+    location = /healthz {
+        return 200 '{"status":"ok","service":"gateway"}';
+        default_type application/json;
+    }
+
+    # --- Dynamic path-based routing (authenticated) ---
+    # /nmap        -> nmap:3000/
+    # /nmap/       -> nmap:3000/
+    # /httpx/foo   -> httpx:3000/foo
+    location ~ ^/([a-z][a-z0-9-]*)(/.*)?$ {
+        set $service $1;
+        set $path $2;
+
+        # Require valid API key (F3)
+        if ($api_key_valid = 0) {
+            return 401 '{"error":"Unauthorized — set X-API-Key header"}';
+        }
+
+        # Rate limiting (F14)
+        limit_req zone=api_limit burst=100 nodelay;
+
+        # Docker Compose internal DNS
+        resolver 127.0.0.11 valid=10s ipv6=off;
+
+        proxy_pass http://$service:3000$path;
+
+        # CORS removed (F2) — MCP uses SSE, not browser fetch
+    }
+
+    # Root redirects to service discovery
+    location = / {
+        return 301 /services;
+    }
+}

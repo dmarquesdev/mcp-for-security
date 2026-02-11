@@ -7,10 +7,10 @@ import { TARGETS } from "../helpers/targets.js";
 
 describe("WordPress tools", () => {
   describe("wpscan", () => {
-    it("scans WordPress target", { timeout: 120000 }, async () => {
+    it("scans WordPress target", { timeout: 120000 }, async (t) => {
       const skip = await shouldSkip(TestCategory.VULN_WORDPRESS);
-      if (skip) return;
-      if (!(await isServiceHealthy("wpscan"))) return;
+      if (skip) { t.skip(skip); return; }
+      if (!(await isServiceHealthy("wpscan"))) { t.skip("wpscan not healthy"); return; }
       const result = await callTool("wpscan", "do-wpscan", {
         target: TARGETS.WORDPRESS,
         args: [],
