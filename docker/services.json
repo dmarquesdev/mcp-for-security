@@ -3,6 +3,7 @@
     {"name": "alterx", "path": "/alterx", "description": "Pattern-based wordlist generator for subdomain discovery"},
     {"name": "amass", "path": "/amass", "description": "Advanced subdomain enumeration and reconnaissance"},
     {"name": "arjun", "path": "/arjun", "description": "Hidden HTTP parameter discovery"},
+    {"name": "asnmap", "path": "/asnmap", "description": "ASN to CIDR mapping and network intelligence"},
     {"name": "assetfinder", "path": "/assetfinder", "description": "Passive subdomain discovery"},
     {"name": "cero", "path": "/cero", "description": "Certificate-based subdomain enumeration"},
     {"name": "commix", "path": "/commix", "description": "Command injection detection and exploitation"},

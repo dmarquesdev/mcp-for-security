@@ -87,11 +87,12 @@ export async function waitForTarget(
   return false;
 }
 
-/** All 28 service names matching docker-compose service names */
+/** All 29 service names matching docker-compose service names */
 export const ALL_SERVICES = [
   "alterx",
   "amass",
   "arjun",
+  "asnmap",
   "assetfinder",
   "cero",
   "commix",

@@ -9,7 +9,7 @@
 
 ## 🚀 Project Overview
 
-**MCP for Security** repository contains 28 Model Context Protocol (MCP) server implementations for various security testing tools, making them accessible through a standardized interface. All servers live in `servers/` and share a common utility library (`packages/mcp-shared/`). The repo uses npm workspaces and supports both stdio and HTTP transport.
+**MCP for Security** repository contains 29 Model Context Protocol (MCP) server implementations for various security testing tools, making them accessible through a standardized interface. All servers live in `servers/` and share a common utility library (`packages/mcp-shared/`). The repo uses npm workspaces and supports both stdio and HTTP transport.
 
 ---
 
@@ -17,7 +17,7 @@
 
 ### Docker (Recommended)
 
-Run all 28 MCP servers behind a single Nginx gateway using Docker Compose:
+Run all 29 MCP servers behind a single Nginx gateway using Docker Compose:
 
 ```bash
 docker compose up                             # Start gateway + all servers
@@ -49,6 +49,7 @@ Since each MCP server may require different dependencies, the `start.sh` bash sc
 | Amass | Advanced subdomain enumeration and reconnaissance tool | [Amass MCP Documentation](./servers/amass-mcp/) |
 | Alterx | Pattern-based wordlist generator for subdomain discovery | [Alterx MCP Documentation](./servers/alterx-mcp/) |
 | Arjun | Run Arjun to discover hidden HTTP parameters | [Arjun MCP Documentation](./servers/arjun-mcp/) |
+| Asnmap | ASN to CIDR mapping and network intelligence | [Asnmap MCP Documentation](./servers/asnmap-mcp/) |
 | Assetfinder | Passive subdomain discovery tool based on Tomnomnom's Assetfinder | [Assetfinder MCP Documentation](./servers/assetfinder-mcp/) |
 | Cero | Certificate-based subdomain enumeration tool leveraging TLS handshakes to extract domain names from certificate fields like SAN | [Cero MCP Documentation](./servers/cero-mcp/) |
 | Certificate Search (crt.sh) | Subdomain discovery tool using SSL certificate logs | [Certificate Search MCP Documentation](./servers/crtsh-mcp/) |

@@ -15,9 +15,10 @@ WORKDIR /build/server
 COPY tsconfig.base.json /tsconfig.base.json
 COPY --from=shared-builder /build/mcp-shared /build/mcp-shared
 COPY ${SERVER_DIR}/package*.json ./
-RUN npm config set fetch-retries 5 && npm config set fetch-retry-maxtimeout 120000 && \
+RUN node -e "const p=JSON.parse(require('fs').readFileSync('package.json','utf8'));delete(p.dependencies||{})['mcp-shared'];delete(p.devDependencies||{})['test-helpers'];require('fs').writeFileSync('package.json',JSON.stringify(p,null,2))" && \
+    npm config set fetch-retries 5 && npm config set fetch-retry-maxtimeout 120000 && \
     for i in 1 2 3 4 5; do npm install && break || sleep 15; done && \
-    rm -rf node_modules/mcp-shared && cp -r /build/mcp-shared node_modules/mcp-shared
+    cp -r /build/mcp-shared node_modules/mcp-shared
 COPY ${SERVER_DIR}/tsconfig.json ./
 COPY ${SERVER_DIR}/src/ src/
 RUN npm run build
@@ -26,7 +27,7 @@ RUN npm run build
 FROM golang:1.25-bookworm AS go-builder
 ARG GO_PACKAGE
 ARG GO_VERSION=latest
-RUN go install ${GO_PACKAGE}@${GO_VERSION}
+RUN for i in 1 2 3 4 5; do go install ${GO_PACKAGE}@${GO_VERSION} && break || sleep 15; done
 
 # --- Stage 4: Runtime ---
 FROM node:22-slim
