@@ -13,8 +13,8 @@ server.tool(
     "do-waybackurls",
     "Fetch known URLs from the Wayback Machine archive for a given domain, useful for discovering historical endpoints.",
     {
-        target: z.string().url().describe("Target domain to retrieve historical URLs from"),
-        noSub: z.boolean().nullable().describe("When true, only retrieves URLs from the exact domain, excluding subdomains"),
+        target: z.string().describe("Target domain to retrieve historical URLs from"),
+        noSub: z.boolean().optional().default(false).describe("When true, only retrieves URLs from the exact domain, excluding subdomains"),
         ...TIMEOUT_SCHEMA,
     },
     async ({ target, noSub, timeoutSeconds }, extra) => {

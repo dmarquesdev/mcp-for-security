@@ -5,7 +5,8 @@ COPY tsconfig.base.json /tsconfig.base.json
 COPY packages/mcp-shared/package*.json ./
 COPY packages/mcp-shared/tsconfig.json ./
 COPY packages/mcp-shared/src/ src/
-RUN npm install && npm run build
+RUN npm config set fetch-retries 5 && npm config set fetch-retry-maxtimeout 120000 && \
+    for i in 1 2 3 4 5; do npm install && break || sleep 15; done && npm run build
 
 # --- Stage 2: Build server TypeScript ---
 FROM node:22-slim AS server-builder
@@ -14,7 +15,9 @@ WORKDIR /build/server
 COPY tsconfig.base.json /tsconfig.base.json
 COPY --from=shared-builder /build/mcp-shared /build/mcp-shared
 COPY ${SERVER_DIR}/package*.json ./
-RUN npm install && rm -rf node_modules/mcp-shared && cp -r /build/mcp-shared node_modules/mcp-shared
+RUN npm config set fetch-retries 5 && npm config set fetch-retry-maxtimeout 120000 && \
+    for i in 1 2 3 4 5; do npm install && break || sleep 15; done && \
+    rm -rf node_modules/mcp-shared && cp -r /build/mcp-shared node_modules/mcp-shared
 COPY ${SERVER_DIR}/tsconfig.json ./
 COPY ${SERVER_DIR}/src/ src/
 RUN npm run build

@@ -5,10 +5,19 @@
   "workspaces": [
     "packages/*",
     "servers/*",
-    "test-integration"
+    "test-integration",
+    "test-e2e"
   ],
+  "dependencies": {
+    "zod": "3.25.76"
+  },
+  "overrides": {
+    "zod": "3.25.76"
+  },
   "scripts": {
     "test": "bash scripts/test-all.sh",
+    "test:e2e": "bash scripts/test-e2e.sh",
+    "test:e2e:smoke": "npm -w test-e2e run build && npm -w test-e2e run test:smoke",
     "build:shared": "npm -w mcp-shared run build",
     "build:helpers": "npm -w test-helpers run build"
   }

@@ -1,5 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import type { IncomingMessage } from "node:http";
 
 function parseArg(name: string): string | null {
     const eqForm = process.argv.find((a) => a.startsWith(`--${name}=`));
@@ -9,6 +10,15 @@ function parseArg(name: string): string | null {
     if (idx !== -1 && idx + 1 < process.argv.length) return process.argv[idx + 1];
 
     return null;
+}
+
+function readRequestBody(req: IncomingMessage): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const chunks: Buffer[] = [];
+        req.on("data", (chunk: Buffer) => chunks.push(chunk));
+        req.on("end", () => resolve(Buffer.concat(chunks).toString()));
+        req.on("error", reject);
+    });
 }
 
 export interface StartServerOptions {
@@ -30,11 +40,8 @@ export async function startServer(
 
         const port = parseInt(parseArg("port") || "") || opts?.defaultPort || 3000;
 
-        const transport = new StreamableHTTPServerTransport({
-            sessionIdGenerator: () => randomUUID(),
-        });
-
-        await server.connect(transport);
+        // Session map: sessionId → transport
+        const sessions = new Map<string, InstanceType<typeof StreamableHTTPServerTransport>>();
 
         const httpServer = createServer(async (req, res) => {
             const url = new URL(req.url || "/", `http://localhost:${port}`);
@@ -60,7 +67,68 @@ export async function startServer(
             // Add CORS headers to all responses
             res.setHeader("Access-Control-Allow-Origin", "*");
 
-            await transport.handleRequest(req, res);
+            // Route existing session by header
+            const sessionId = req.headers["mcp-session-id"] as string | undefined;
+            if (sessionId && sessions.has(sessionId)) {
+                await sessions.get(sessionId)!.handleRequest(req, res);
+                return;
+            }
+
+            // New session: read body, check for initialize
+            if (req.method === "POST") {
+                const bodyStr = await readRequestBody(req);
+                let body: unknown;
+                try {
+                    body = JSON.parse(bodyStr);
+                } catch {
+                    res.writeHead(400, { "Content-Type": "application/json" });
+                    res.end(JSON.stringify({
+                        jsonrpc: "2.0",
+                        error: { code: -32700, message: "Parse error" },
+                        id: null,
+                    }));
+                    return;
+                }
+
+                const messages = Array.isArray(body) ? body : [body];
+                const isInit = messages.some(
+                    (m: unknown) =>
+                        m !== null &&
+                        typeof m === "object" &&
+                        (m as Record<string, unknown>).method === "initialize"
+                );
+
+                if (isInit) {
+                    // Close any existing session so server.connect() works
+                    // (Protocol.connect() throws if _transport is still set)
+                    for (const [sid, oldTransport] of sessions) {
+                        await oldTransport.close();
+                        sessions.delete(sid);
+                    }
+
+                    const transport = new StreamableHTTPServerTransport({
+                        sessionIdGenerator: () => randomUUID(),
+                        onsessioninitialized: (sid: string) => {
+                            sessions.set(sid, transport);
+                        },
+                        onsessionclosed: (sid: string) => {
+                            sessions.delete(sid);
+                        },
+                    });
+
+                    await server.connect(transport);
+                    await transport.handleRequest(req, res, body);
+                    return;
+                }
+            }
+
+            // No valid session, not an initialize request
+            res.writeHead(400, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({
+                jsonrpc: "2.0",
+                error: { code: -32000, message: "Bad Request: No active session" },
+                id: null,
+            }));
         });
 
         httpServer.listen(port);

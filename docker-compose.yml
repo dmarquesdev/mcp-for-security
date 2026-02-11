@@ -92,6 +92,8 @@ services:
         TOOL_BIN: ffuf
     command: ["/usr/local/bin/ffuf", "--transport", "http", "--port", "3000"]
     expose: ["3000"]
+    volumes:
+      - ./docker/e2e-wordlists:/wordlists:ro
     healthcheck:
       <<: *healthcheck
       test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
@@ -122,6 +124,8 @@ services:
         TOOL_BIN: gobuster
     command: ["/usr/local/bin/gobuster", "--transport", "http", "--port", "3000"]
     expose: ["3000"]
+    volumes:
+      - ./docker/e2e-wordlists:/wordlists:ro
     healthcheck:
       <<: *healthcheck
       test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
@@ -221,8 +225,10 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile.shuffledns
-    command: ["/usr/local/bin/shuffledns", "--transport", "http", "--port", "3000"]
+    command: ["/usr/local/bin/shuffledns", "/usr/local/bin/massdns", "--transport", "http", "--port", "3000"]
     expose: ["3000"]
+    volumes:
+      - ./docker/e2e-wordlists:/wordlists:ro
     healthcheck:
       <<: *healthcheck
       test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
@@ -451,4 +457,76 @@ services:
     healthcheck:
       <<: *healthcheck
       test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
+    <<: *restart
+
+  # ═══════════════════════════════════════════
+  # E2E Test Targets
+  # ═══════════════════════════════════════════
+
+  httpbin:
+    image: kennethreitz/httpbin:latest
+    ports: ["${HTTPBIN_PORT:-8081}:80"]
+    profiles: ["e2e"]
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD-SHELL", "curl -sf http://localhost:80/ || exit 1"]
+    <<: *restart
+
+  dvwa:
+    image: ghcr.io/digininja/dvwa:latest
+    ports: ["${DVWA_PORT:-8082}:80"]
+    profiles: ["e2e"]
+    environment:
+      - DB_SERVER=dvwa-db
+    depends_on:
+      dvwa-db:
+        condition: service_healthy
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD-SHELL", "curl -sf http://localhost:80/ || exit 1"]
+    <<: *restart
+
+  dvwa-db:
+    image: mariadb:10
+    expose: ["3306"]
+    profiles: ["e2e"]
+    environment:
+      - MYSQL_ROOT_PASSWORD=dvwa
+      - MYSQL_DATABASE=dvwa
+      - MYSQL_USER=dvwa
+      - MYSQL_PASSWORD=p@ssw0rd
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost"]
+    <<: *restart
+
+  wordpress:
+    image: wordpress:latest
+    ports: ["${WORDPRESS_PORT:-8083}:80"]
+    profiles: ["e2e"]
+    environment:
+      - WORDPRESS_DB_HOST=wordpress-db
+      - WORDPRESS_DB_USER=wp
+      - WORDPRESS_DB_PASSWORD=wp
+      - WORDPRESS_DB_NAME=wordpress
+    depends_on:
+      wordpress-db:
+        condition: service_healthy
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD-SHELL", "curl -sf http://localhost:80/ || exit 1"]
+    <<: *restart
+
+  wordpress-db:
+    image: mariadb:10
+    expose: ["3306"]
+    profiles: ["e2e"]
+    environment:
+      - MYSQL_ROOT_PASSWORD=wp
+      - MYSQL_DATABASE=wordpress
+      - MYSQL_USER=wp
+      - MYSQL_PASSWORD=wp
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost"]
     <<: *restart

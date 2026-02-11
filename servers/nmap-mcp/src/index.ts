@@ -14,7 +14,7 @@ server.tool(
     "Run nmap with specified target",
     {
         target: z.string().describe("Target ip to detect open ports"),
-        nmap_args: z.array(z.string()).describe("Additional nmap arguments (e.g. -sV, -sC, -p, -T4, -A, --top-ports, etc.)"),
+        nmap_args: z.array(z.string()).optional().default([]).describe("Additional nmap arguments (e.g. -sV, -sC, -p, -T4, -A, --top-ports, etc.)"),
         ...TIMEOUT_SCHEMA,
     },
     async ({ target, nmap_args, timeoutSeconds }, extra) => {
