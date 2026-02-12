@@ -9,7 +9,7 @@ import {
     assertToolCallFails,
     getResultText,
 } from "test-helpers";
-import { formatToolResult } from "mcp-shared";
+import { formatToolResult, TIMEOUT_SCHEMA, buildSpawnOptions } from "mcp-shared";
 
 describe("nuclei-mcp", () => {
     const mock = createMockSpawn();
@@ -22,12 +22,13 @@ describe("nuclei-mcp", () => {
         {
             url: z.string().url().describe("Target URL to run nuclei"),
             tags: z.array(z.string()).optional().describe("Tags to filter nuclei templates"),
+            ...TIMEOUT_SCHEMA,
         },
-        async ({ url, tags }) => {
+        async ({ url, tags, timeoutSeconds }, extra) => {
             const nucleiArgs = ["-u", url, "-silent"];
             if (tags && tags.length > 0) nucleiArgs.push("-tags", tags.join(","));
 
-            const result = await mock.spawn("nuclei", nucleiArgs);
+            const result = await mock.spawn("nuclei", nucleiArgs, buildSpawnOptions(extra, { timeoutSeconds }));
             return formatToolResult(result, { toolName: "nuclei" });
         }
     );
@@ -154,6 +155,17 @@ describe("nuclei-mcp", () => {
         const text = getResultText(result);
         assert.ok(text.includes("cve"));
         assert.ok(text.includes("rce"));
+        await harness.cleanup();
+    });
+
+    it("passes timeoutSeconds to spawn options", async () => {
+        await harness.connect();
+        await assertToolCallSucceeds(harness.client, "do-nuclei", {
+            url: "https://example.com",
+            timeoutSeconds: 60,
+        });
+        const opts = mock.lastCall()?.options;
+        assert.equal(opts?.timeoutMs, 60000);
         await harness.cleanup();
     });
 });

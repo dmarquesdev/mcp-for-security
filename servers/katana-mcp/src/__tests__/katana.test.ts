@@ -9,7 +9,7 @@ import {
     assertToolCallFails,
     getResultText,
 } from "test-helpers";
-import { formatToolResult } from "mcp-shared";
+import { formatToolResult, TIMEOUT_SCHEMA, buildSpawnOptions } from "mcp-shared";
 
 describe("katana-mcp", () => {
     const mock = createMockSpawn();
@@ -29,8 +29,9 @@ describe("katana-mcp", () => {
             headless: z.boolean().optional(),
             system_chrome: z.boolean().optional(),
             show_browser: z.boolean().optional(),
+            ...TIMEOUT_SCHEMA,
         },
-        async ({ target, exclude, depth, js_crawl, jsluice, headers, strategy, headless, system_chrome, show_browser }) => {
+        async ({ target, exclude, depth, js_crawl, jsluice, headers, strategy, headless, system_chrome, show_browser, timeoutSeconds }, extra) => {
             const katanaArgs = ["-u", target.join(","), "-silent"];
 
             if (exclude && exclude.length > 0) katanaArgs.push("-exclude", exclude.join(","));
@@ -43,7 +44,7 @@ describe("katana-mcp", () => {
             if (system_chrome) katanaArgs.push("-system-chrome");
             if (show_browser) katanaArgs.push("-show-browser");
 
-            const result = await mock.spawn("katana", katanaArgs);
+            const result = await mock.spawn("katana", katanaArgs, buildSpawnOptions(extra, { timeoutSeconds }));
             return formatToolResult(result, { toolName: "katana" });
         }
     );
@@ -232,5 +233,16 @@ describe("katana-mcp", () => {
         assert.ok(text.includes("https://example.com/api"));
         assert.ok(text.includes("https://example.com/login"));
         await h.cleanup();
+    });
+
+    it("passes timeoutSeconds to spawn options", async () => {
+        await harness.connect();
+        await assertToolCallSucceeds(harness.client, "do-katana", {
+            target: ["https://example.com"],
+            timeoutSeconds: 60,
+        });
+        const opts = mock.lastCall()?.options;
+        assert.equal(opts?.timeoutMs, 60000);
+        await harness.cleanup();
     });
 });

@@ -9,7 +9,7 @@ import {
     assertToolCallFails,
     getResultText,
 } from "test-helpers";
-import { formatToolResult } from "mcp-shared";
+import { formatToolResult, TIMEOUT_SCHEMA, buildSpawnOptions } from "mcp-shared";
 
 describe("assetfinder-mcp", () => {
     const mock = createMockSpawn();
@@ -20,9 +20,10 @@ describe("assetfinder-mcp", () => {
         "Find related domains and subdomains using assetfinder for a given target.",
         {
             target: z.string().describe("The root domain (e.g., example.com) to discover associated subdomains and related domains."),
+            ...TIMEOUT_SCHEMA,
         },
-        async ({ target }) => {
-            const result = await mock.spawn("assetfinder", ["-subs-only", target]);
+        async ({ target, timeoutSeconds }, extra) => {
+            const result = await mock.spawn("assetfinder", ["-subs-only", target], buildSpawnOptions(extra, { timeoutSeconds }));
             return formatToolResult(result, { toolName: "assetfinder" });
         }
     );
@@ -87,6 +88,17 @@ describe("assetfinder-mcp", () => {
     it("rejects when target is missing", async () => {
         await harness.connect();
         await assertToolCallFails(harness.client, "do-assetfinder", {});
+        await harness.cleanup();
+    });
+
+    it("passes timeoutSeconds to spawn options", async () => {
+        await harness.connect();
+        await assertToolCallSucceeds(harness.client, "do-assetfinder", {
+            target: "example.com",
+            timeoutSeconds: 60,
+        });
+        const opts = mock.lastCall()?.options;
+        assert.equal(opts?.timeoutMs, 60000);
         await harness.cleanup();
     });
 });

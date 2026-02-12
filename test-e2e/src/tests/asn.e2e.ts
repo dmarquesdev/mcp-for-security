@@ -1,53 +1,54 @@
 import { describe, it } from "node:test";
 import { callTool } from "../helpers/mcp-client.js";
-import { assertNotEmpty } from "../helpers/assertions.js";
+import { assertContains, assertMatchesAny } from "../helpers/assertions.js";
 import { isServiceHealthy } from "../helpers/health.js";
 import { shouldSkip, TestCategory } from "../helpers/categories.js";
+import { TARGETS } from "../helpers/targets.js";
 
 describe("ASN mapping", () => {
   describe("asnmap", () => {
-    it("resolves ASN to CIDR ranges", { timeout: 60000 }, async (t) => {
+    it(`resolves ${TARGETS.CLOUDFLARE_ASN} to CIDR ranges`, { timeout: 60000 }, async (t) => {
       const skip = await shouldSkip(TestCategory.CREDENTIAL);
       if (skip) { t.skip(skip); return; }
       if (!process.env.PDCP_API_KEY) { t.skip("PDCP_API_KEY not set"); return; }
       if (!(await isServiceHealthy("asnmap"))) { t.skip("asnmap not healthy"); return; }
       const result = await callTool("asnmap", "do-asnmap", {
-        asn: "AS13335",
+        asn: TARGETS.CLOUDFLARE_ASN,
       });
-      assertNotEmpty(result);
+      assertContains(result, "/");
     });
 
-    it("resolves IP to ASN info", { timeout: 60000 }, async (t) => {
+    it(`resolves ${TARGETS.CLOUDFLARE_IP} to ASN info`, { timeout: 60000 }, async (t) => {
       const skip = await shouldSkip(TestCategory.CREDENTIAL);
       if (skip) { t.skip(skip); return; }
       if (!process.env.PDCP_API_KEY) { t.skip("PDCP_API_KEY not set"); return; }
       if (!(await isServiceHealthy("asnmap"))) { t.skip("asnmap not healthy"); return; }
       const result = await callTool("asnmap", "do-asnmap", {
-        ip: "1.1.1.1",
+        ip: TARGETS.CLOUDFLARE_IP,
       });
-      assertNotEmpty(result);
+      assertMatchesAny(result, ["/", "1.1.1"]);
     });
 
-    it("resolves domain to network ranges", { timeout: 60000 }, async (t) => {
+    it(`resolves ${TARGETS.CLOUDFLARE_DOMAIN} to network ranges`, { timeout: 60000 }, async (t) => {
       const skip = await shouldSkip(TestCategory.CREDENTIAL);
       if (skip) { t.skip(skip); return; }
       if (!process.env.PDCP_API_KEY) { t.skip("PDCP_API_KEY not set"); return; }
       if (!(await isServiceHealthy("asnmap"))) { t.skip("asnmap not healthy"); return; }
       const result = await callTool("asnmap", "do-asnmap", {
-        domain: "cloudflare.com",
+        domain: TARGETS.CLOUDFLARE_DOMAIN,
       });
-      assertNotEmpty(result);
+      assertContains(result, "/");
     });
 
-    it("resolves org name", { timeout: 60000 }, async (t) => {
+    it(`resolves ${TARGETS.CLOUDFLARE_ORG} org name`, { timeout: 60000 }, async (t) => {
       const skip = await shouldSkip(TestCategory.CREDENTIAL);
       if (skip) { t.skip(skip); return; }
       if (!process.env.PDCP_API_KEY) { t.skip("PDCP_API_KEY not set"); return; }
       if (!(await isServiceHealthy("asnmap"))) { t.skip("asnmap not healthy"); return; }
       const result = await callTool("asnmap", "do-asnmap", {
-        org: "Cloudflare",
+        org: TARGETS.CLOUDFLARE_ORG,
       });
-      assertNotEmpty(result);
+      assertMatchesAny(result, ["/", "no results found"]);
     });
   });
 });

@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import { callTool } from "../helpers/mcp-client.js";
-import { assertNotEmpty } from "../helpers/assertions.js";
+import { assertMatchesAny, assertIsJson } from "../helpers/assertions.js";
 import { isServiceHealthy } from "../helpers/health.js";
 import { shouldSkip, TestCategory } from "../helpers/categories.js";
 
@@ -12,7 +12,7 @@ describe("mobile and cloud tools", () => {
       if (!process.env.MOBSF_API_KEY) { t.skip("MOBSF_API_KEY not set"); return; }
       if (!(await isServiceHealthy("mobsf"))) { t.skip("mobsf not healthy"); return; }
       const result = await callTool("mobsf", "do-mobsf-recent-scans", {});
-      assertNotEmpty(result);
+      assertIsJson(result);
     });
   });
 
@@ -26,7 +26,7 @@ describe("mobile and cloud tools", () => {
         provider: "aws",
         args: [],
       });
-      assertNotEmpty(result);
+      assertMatchesAny(result, ["scoutsuite", "aws", "scout"]);
     });
   });
 });

@@ -9,7 +9,7 @@ import {
     assertToolCallFails,
     getResultText,
 } from "test-helpers";
-import { formatToolResult } from "mcp-shared";
+import { formatToolResult, TIMEOUT_SCHEMA, buildSpawnOptions } from "mcp-shared";
 
 const PYTHON_PATH = "python3";
 const SMUGGLER_SCRIPT = "smuggler.py";
@@ -43,10 +43,11 @@ describe("smuggler-mcp", () => {
         {
             url: z.string().url().describe("Target URL to test"),
             smuggler_args: z.array(z.string()).optional().describe("Additional smuggler arguments"),
+            ...TIMEOUT_SCHEMA,
         },
-        async ({ url, smuggler_args = [] }) => {
+        async ({ url, smuggler_args = [], timeoutSeconds }, extra) => {
             const allArgs = [SMUGGLER_SCRIPT, "-u", url, ...smuggler_args];
-            const result = await mock.spawn(PYTHON_PATH, allArgs);
+            const result = await mock.spawn(PYTHON_PATH, allArgs, buildSpawnOptions(extra, { timeoutSeconds }));
             const response = formatToolResult(result, { toolName: "smuggler", includeStderr: true, stripAnsi: true });
 
             const output = response.content[0].text;
@@ -186,6 +187,17 @@ describe("smuggler-mcp", () => {
         await assertToolCallFails(harness.client, "do-smuggler", {
             url: "not-a-url",
         });
+        await harness.cleanup();
+    });
+
+    it("passes timeoutSeconds to spawn options", async () => {
+        await harness.connect();
+        await assertToolCallSucceeds(harness.client, "do-smuggler", {
+            url: "http://example.com",
+            timeoutSeconds: 60,
+        });
+        const opts = mock.lastCall()?.options;
+        assert.equal(opts?.timeoutMs, 60000);
         await harness.cleanup();
     });
 });

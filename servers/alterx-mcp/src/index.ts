@@ -15,7 +15,7 @@ server.tool(
     {
         domain: z.string().describe("Target domain or subdomains to use as a base for creating permutations"),
         pattern: z.string().describe("Pattern template for generating wordlist variations (e.g. '{{word}}-{{sub}}.{{suffix}}')"),
-        outputFilePath: z.string().nullable().describe("Path where the generated wordlist should be saved (optional)"),
+        outputFilePath: z.string().optional().describe("Path where the generated wordlist should be saved (optional)"),
         ...TIMEOUT_SCHEMA,
     },
     async ({ domain, pattern, outputFilePath, timeoutSeconds }, extra) => {

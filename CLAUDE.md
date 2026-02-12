@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A monorepo of 28 MCP (Model Context Protocol) server implementations that wrap popular cybersecurity tools. Each server exposes security tools as MCP tools over stdio or HTTP transport, enabling AI assistants to invoke them. A shared utility library (`packages/mcp-shared/`) provides secure spawn, path sanitization, ANSI stripping, and dual-transport bootstrap. Originally created by [Cyprox](https://cyprox.io), independently maintained fork.
+A monorepo of 27 MCP (Model Context Protocol) server implementations that wrap popular cybersecurity tools. Each server exposes security tools as MCP tools over stdio or HTTP transport, enabling AI assistants to invoke them. A shared utility library (`packages/mcp-shared/`) provides secure spawn, path sanitization, ANSI stripping, and dual-transport bootstrap. Originally created by [Cyprox](https://cyprox.io), independently maintained fork.
 
 ### Repository Structure
 
@@ -13,11 +13,11 @@ A monorepo of 28 MCP (Model Context Protocol) server implementations that wrap p
   packages/               # Shared libraries
     mcp-shared/           # Core utilities (spawn, sanitize, transport, env, etc.)
     test-helpers/         # Test utilities (mock spawn, test server factory)
-  servers/                # All 28 MCP server implementations
+  servers/                # All 27 MCP server implementations
     nmap-mcp/
     httpx-mcp/
     nuclei-mcp/
-    ...25 more...
+    ...24 more...
   test-integration/       # Integration tests
   test-e2e/               # E2E tests against live Docker containers
   docker/                 # Categorized Dockerfiles, Nginx config, e2e-wordlists
@@ -63,7 +63,7 @@ Iterates all `servers/*-mcp/` directories, runs each `build.sh`, then generates 
 ### Docker build (per-server images with Nginx gateway)
 ```bash
 docker compose build                          # Build all images
-docker compose up                             # Start gateway + all 28 servers
+docker compose up                             # Start gateway + all 27 servers
 docker compose up gateway nmap httpx nuclei    # Start gateway + specific tools
 docker compose --profile e2e up -d            # Start all servers + E2E test targets
 ```
@@ -73,7 +73,7 @@ Per-server multi-stage Docker images behind an Nginx gateway at `localhost:8000`
 
 | Dockerfile | Serves | Tools |
 |------------|--------|-------|
-| `Dockerfile.go` | 13 Go tools | alterx, amass, assetfinder, cero, ffuf, github-subdomains, gobuster, gowitness, httpx, katana, nuclei, subfinder, waybackurls |
+| `Dockerfile.go` | 12 Go tools | alterx, assetfinder, cero, ffuf, github-subdomains, gobuster, gowitness, httpx, katana, nuclei, subfinder, waybackurls |
 | `Dockerfile.system` | 3 system tools | nmap, masscan, sslscan |
 | `Dockerfile.python-pip` | 2 pip tools | arjun, scoutsuite |
 | `Dockerfile.python-git` | 3 git-cloned tools | commix, smuggler, sqlmap |
@@ -84,7 +84,7 @@ Per-server multi-stage Docker images behind an Nginx gateway at `localhost:8000`
 | `Dockerfile.api` | 3 API-only tools | crtsh, http-headers-security, mobsf |
 | `Dockerfile.gateway` | Nginx gateway | Reverse proxy + service discovery |
 
-**Service discovery:** `GET http://localhost:8000/services` returns `docker/services.json` listing all 28 tools.
+**Service discovery:** `GET http://localhost:8000/services` returns `docker/services.json` listing all 27 tools.
 
 **E2E test targets** (activated via `--profile e2e`):
 
@@ -133,7 +133,7 @@ All servers support both stdio and HTTP transport via `startServer()` from `mcp-
 ```bash
 npm test
 ```
-This executes `scripts/test-all.sh`, which builds `mcp-shared` and `test-helpers`, then runs tests for all 28 servers plus integration tests. No security tools required — all server tests use mock spawn.
+This executes `scripts/test-all.sh`, which builds `mcp-shared` and `test-helpers`, then runs tests for all 27 servers plus integration tests. No security tools required — all server tests use mock spawn.
 
 ### Run tests for a single server
 ```bash
@@ -235,7 +235,7 @@ MCP Server Layer (Node.js TypeScript)
         | secureSpawn / HTTP API
         v
 Security Tool Layer
-  - Go binaries (alterx, amass, httpx, katana, nuclei, etc.)
+  - Go binaries (alterx, httpx, katana, nuclei, subfinder, etc.)
   - Python scripts (commix, sqlmap, scoutsuite, arjun)
   - System binaries (nmap, masscan, sslscan)
   - HTTP APIs (crt.sh, MobSF, http-headers-security)
@@ -243,7 +243,7 @@ Security Tool Layer
 
 ### Shared Utility Library (`packages/mcp-shared/`)
 
-All 28 servers import from the `mcp-shared` local package:
+All 27 servers import from the `mcp-shared` local package:
 
 | Module | Exports | Purpose |
 |--------|---------|---------|
@@ -283,7 +283,7 @@ Every server in `src/index.ts`:
 ## Conventions
 
 - **Directory naming:** `servers/<tool>-mcp/` (e.g., `servers/nmap-mcp`, `servers/httpx-mcp`, `servers/cero-mcp`)
-- **Tool function naming:** All use `do-<tool>` (e.g., `do-nmap`, `do-ffuf`, `do-httpx`, `do-amass`)
+- **Tool function naming:** All use `do-<tool>` (e.g., `do-nmap`, `do-ffuf`, `do-httpx`, `do-nuclei`)
 - **TypeScript target:** ES2022, module: Node16, strict mode
 - **Core deps:** `@modelcontextprotocol/sdk` ^1.17.2, `zod`, `mcp-shared` (all servers)
 - **ANSI stripping:** Import `removeAnsiCodes` from `mcp-shared` (only needed for Python tools)

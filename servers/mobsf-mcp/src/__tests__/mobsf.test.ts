@@ -8,6 +8,7 @@ import {
     assertToolCallFails,
     getResultText,
 } from "test-helpers";
+import { TIMEOUT_SCHEMA } from "mcp-shared";
 
 describe("mobsf-mcp", () => {
     const harness = createTestServer("mobsf");
@@ -19,6 +20,7 @@ describe("mobsf-mcp", () => {
         {
             hash: z.string().describe("Hash of the file to scan"),
             reScan: z.boolean().optional().describe("Set to true to force a rescan"),
+            ...TIMEOUT_SCHEMA,
         },
         async ({ hash, reScan }) => {
             const result = {
@@ -223,6 +225,15 @@ describe("mobsf-mcp", () => {
         await harness.connect();
         await assertToolCallFails(harness.client, "do-mobsf-recent-scans", {
             page: 1,
+        });
+        await harness.cleanup();
+    });
+
+    it("accepts timeoutSeconds parameter", async () => {
+        await harness.connect();
+        await assertToolCallSucceeds(harness.client, "do-mobsf-scan", {
+            hash: "deadbeef1234",
+            timeoutSeconds: 60,
         });
         await harness.cleanup();
     });

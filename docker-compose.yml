@@ -77,26 +77,6 @@ services:
     networks: ["tools"]
     <<: [*restart, *resource-limits, *security]
 
-  amass:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.go
-      args:
-        SERVER_DIR: servers/amass-mcp
-        GO_PACKAGE: github.com/owasp-amass/amass/v4/...
-        GO_VERSION: master
-        TOOL_BIN: amass
-    command: ["/usr/local/bin/amass", "--transport", "http", "--port", "3000"]
-    expose: ["3000"]
-    env_file:
-      - path: .env
-        required: false
-    healthcheck:
-      <<: *healthcheck
-      test: ["CMD", "curl", "-sf", "http://localhost:3000/healthz"]
-    networks: ["tools"]
-    <<: [*restart, *resource-limits-heavy, *security]
-
   asnmap:
     build:
       context: .

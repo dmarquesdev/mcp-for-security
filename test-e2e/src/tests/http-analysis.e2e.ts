@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import { callTool } from "../helpers/mcp-client.js";
-import { assertNotEmpty, assertIsJson } from "../helpers/assertions.js";
+import { assertMatchesAny, assertIsJson } from "../helpers/assertions.js";
 import { isServiceHealthy } from "../helpers/health.js";
 import { shouldSkip, TestCategory } from "../helpers/categories.js";
 import { TARGETS } from "../helpers/targets.js";
@@ -27,7 +27,7 @@ describe("HTTP analysis tools", () => {
         target: TARGETS.HTTPBIN,
         args: [],
       });
-      assertNotEmpty(result);
+      assertMatchesAny(result, ["http", "smuggl", "request", "probe"]);
     });
   });
 
@@ -40,7 +40,7 @@ describe("HTTP analysis tools", () => {
         target: TARGETS.HTTPBIN_GET,
         args: [],
       });
-      assertNotEmpty(result);
+      assertMatchesAny(result, ["http", "parameter", "arjun"]);
     });
   });
 });

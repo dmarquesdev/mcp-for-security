@@ -9,7 +9,7 @@ import {
     assertToolCallFails,
     getResultText,
 } from "test-helpers";
-import { formatToolResult } from "mcp-shared";
+import { formatToolResult, TIMEOUT_SCHEMA, buildSpawnOptions } from "mcp-shared";
 
 describe("httpx-mcp", () => {
     const mock = createMockSpawn();
@@ -22,15 +22,16 @@ describe("httpx-mcp", () => {
             target: z.array(z.string()),
             ports: z.array(z.number()).optional(),
             probes: z.array(z.string()).optional(),
+            ...TIMEOUT_SCHEMA,
         },
-        async ({ target, ports, probes }) => {
+        async ({ target, ports, probes, timeoutSeconds }, extra) => {
             const httpxArgs = ["-u", target.join(","), "-silent"];
             if (ports && ports.length > 0) httpxArgs.push("-p", ports.join(","));
             if (probes && probes.length > 0) {
                 for (const probe of probes) httpxArgs.push(`-${probe}`);
             }
 
-            const result = await mock.spawn("httpx", httpxArgs);
+            const result = await mock.spawn("httpx", httpxArgs, buildSpawnOptions(extra, { timeoutSeconds }));
             return formatToolResult(result, { toolName: "httpx" });
         }
     );
@@ -184,5 +185,16 @@ describe("httpx-mcp", () => {
         assert.ok(text.includes("https://example.com"));
         assert.ok(text.includes("nginx"));
         await h.cleanup();
+    });
+
+    it("passes timeoutSeconds to spawn options", async () => {
+        await harness.connect();
+        await assertToolCallSucceeds(harness.client, "do-httpx", {
+            target: ["example.com"],
+            timeoutSeconds: 60,
+        });
+        const opts = mock.lastCall()?.options;
+        assert.equal(opts?.timeoutMs, 60000);
+        await harness.cleanup();
     });
 });

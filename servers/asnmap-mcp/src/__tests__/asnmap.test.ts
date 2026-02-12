@@ -9,7 +9,7 @@ import {
     assertToolCallFails,
     getResultText,
 } from "test-helpers";
-import { formatToolResult } from "mcp-shared";
+import { formatToolResult, TIMEOUT_SCHEMA, buildSpawnOptions } from "mcp-shared";
 
 describe("asnmap-mcp", () => {
     const mock = createMockSpawn();
@@ -27,8 +27,9 @@ describe("asnmap-mcp", () => {
             csv: z.boolean().optional().describe("Output in CSV format"),
             ipv6: z.boolean().optional().describe("Include IPv6 CIDR ranges"),
             resolvers: z.string().optional().describe("Custom resolver list"),
+            ...TIMEOUT_SCHEMA,
         },
-        async ({ asn, ip, domain, org, json, csv, ipv6, resolvers }) => {
+        async ({ asn, ip, domain, org, json, csv, ipv6, resolvers, timeoutSeconds }, extra) => {
             if (!asn && !ip && !domain && !org) {
                 return {
                     content: [{ type: "text" as const, text: "Error: at least one of asn, ip, domain, or org must be provided" }],
@@ -49,7 +50,7 @@ describe("asnmap-mcp", () => {
 
             asnmapArgs.push("-silent", "-disable-update-check");
 
-            const result = await mock.spawn("asnmap", asnmapArgs);
+            const result = await mock.spawn("asnmap", asnmapArgs, buildSpawnOptions(extra, { timeoutSeconds }));
             return formatToolResult(result, { toolName: "asnmap" });
         }
     );
@@ -178,5 +179,16 @@ describe("asnmap-mcp", () => {
         assert.ok(text.includes("AS13335"));
         assert.ok(text.includes("1.0.0.0"));
         await h.cleanup();
+    });
+
+    it("passes timeoutSeconds to spawn options", async () => {
+        await harness.connect();
+        await assertToolCallSucceeds(harness.client, "do-asnmap", {
+            asn: "AS14421",
+            timeoutSeconds: 60,
+        });
+        const opts = mock.lastCall()?.options;
+        assert.equal(opts?.timeoutMs, 60000);
+        await harness.cleanup();
     });
 });

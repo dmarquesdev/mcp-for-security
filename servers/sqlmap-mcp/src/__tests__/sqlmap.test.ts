@@ -9,7 +9,7 @@ import {
     assertToolCallFails,
     getResultText,
 } from "test-helpers";
-import { formatToolResult } from "mcp-shared";
+import { formatToolResult, TIMEOUT_SCHEMA, buildSpawnOptions } from "mcp-shared";
 
 describe("sqlmap-mcp", () => {
     const mock = createMockSpawn();
@@ -21,9 +21,10 @@ describe("sqlmap-mcp", () => {
         {
             url: z.string().url().describe("Target URL to test"),
             sqlmap_args: z.array(z.string()).describe("Additional sqlmap arguments"),
+            ...TIMEOUT_SCHEMA,
         },
-        async ({ url, sqlmap_args }) => {
-            const result = await mock.spawn("sqlmap", ["-u", url, ...sqlmap_args]);
+        async ({ url, sqlmap_args, timeoutSeconds }, extra) => {
+            const result = await mock.spawn("sqlmap", ["-u", url, ...sqlmap_args], buildSpawnOptions(extra, { timeoutSeconds }));
             return formatToolResult(result, { toolName: "sqlmap", includeStderr: true });
         },
     );
@@ -115,6 +116,18 @@ describe("sqlmap-mcp", () => {
             url: "not-a-url",
             sqlmap_args: [],
         });
+        await harness.cleanup();
+    });
+
+    it("passes timeoutSeconds to spawn options", async () => {
+        await harness.connect();
+        await assertToolCallSucceeds(harness.client, "do-sqlmap", {
+            url: "http://example.com/vuln?id=1",
+            sqlmap_args: ["--batch"],
+            timeoutSeconds: 60,
+        });
+        const opts = mock.lastCall()?.options;
+        assert.equal(opts?.timeoutMs, 60000);
         await harness.cleanup();
     });
 });

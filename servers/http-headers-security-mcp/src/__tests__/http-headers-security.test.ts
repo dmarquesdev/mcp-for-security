@@ -8,6 +8,7 @@ import {
     assertToolCallFails,
     getResultText,
 } from "test-helpers";
+import { TIMEOUT_SCHEMA } from "mcp-shared";
 
 describe("http-headers-security-mcp", () => {
     const harness = createTestServer("http-headers-security");
@@ -18,6 +19,7 @@ describe("http-headers-security-mcp", () => {
         "Perform security analysis of HTTP response headers for a web application",
         {
             target: z.string().describe("Target URL to analyze"),
+            ...TIMEOUT_SCHEMA,
         },
         async ({ target }) => {
             // Mock: return fake analysis result instead of fetching real headers
@@ -99,6 +101,15 @@ describe("http-headers-security-mcp", () => {
     it("rejects when target is missing", async () => {
         await harness.connect();
         await assertToolCallFails(harness.client, "do-analyze-http-headers", {});
+        await harness.cleanup();
+    });
+
+    it("accepts timeoutSeconds parameter", async () => {
+        await harness.connect();
+        await assertToolCallSucceeds(harness.client, "do-analyze-http-headers", {
+            target: "https://example.com",
+            timeoutSeconds: 60,
+        });
         await harness.cleanup();
     });
 });

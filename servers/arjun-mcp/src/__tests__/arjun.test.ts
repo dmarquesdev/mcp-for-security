@@ -9,7 +9,7 @@ import {
     assertToolCallFails,
     getResultText,
 } from "test-helpers";
-import { formatToolResult } from "mcp-shared";
+import { formatToolResult, TIMEOUT_SCHEMA, buildSpawnOptions } from "mcp-shared";
 
 describe("arjun-mcp", () => {
     const mock = createMockSpawn();
@@ -25,8 +25,9 @@ describe("arjun-mcp", () => {
             method: z.enum(["GET", "POST", "JSON", "HEADERS"]).optional().describe("HTTP method to use (default: GET)"),
             rateLimit: z.number().optional().describe("Maximum requests per second (default: 9999)"),
             chunkSize: z.number().optional().describe("Chunk size - number of parameters to send at once"),
+            ...TIMEOUT_SCHEMA,
         },
-        async ({ url, textFile, wordlist, method, rateLimit, chunkSize }) => {
+        async ({ url, textFile, wordlist, method, rateLimit, chunkSize, timeoutSeconds }, extra) => {
             const arjunArgs: string[] = [];
             if (!url && !textFile) throw new Error("url or textFile parameter required");
             if (url) arjunArgs.push("-u", url);
@@ -36,7 +37,7 @@ describe("arjun-mcp", () => {
             if (rateLimit) arjunArgs.push("--rate-limit", rateLimit.toString());
             if (chunkSize) arjunArgs.push("--chunk-size", chunkSize.toString());
 
-            const result = await mock.spawn("arjun", arjunArgs);
+            const result = await mock.spawn("arjun", arjunArgs, buildSpawnOptions(extra, { timeoutSeconds }));
             return formatToolResult(result, { toolName: "arjun", stripAnsi: true });
         },
     );
@@ -133,6 +134,17 @@ describe("arjun-mcp", () => {
         await assertToolCallFails(harness.client, "do-arjun", {
             url: "not-a-url",
         });
+        await harness.cleanup();
+    });
+
+    it("passes timeoutSeconds to spawn options", async () => {
+        await harness.connect();
+        await assertToolCallSucceeds(harness.client, "do-arjun", {
+            url: "http://example.com/api",
+            timeoutSeconds: 60,
+        });
+        const opts = mock.lastCall()?.options;
+        assert.equal(opts?.timeoutMs, 60000);
         await harness.cleanup();
     });
 });

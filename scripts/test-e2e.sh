@@ -49,7 +49,7 @@ echo ""
 echo "Checking service health..."
 HEALTHY=0
 TOTAL=0
-SERVICES=(alterx amass arjun assetfinder cero commix crtsh ffuf github-subdomains gobuster gowitness http-headers-security httpx katana masscan mobsf nmap nuclei scoutsuite seclists shuffledns smuggler sqlmap sslscan subfinder testssl waybackurls wpscan)
+SERVICES=(alterx arjun assetfinder cero commix crtsh ffuf github-subdomains gobuster gowitness http-headers-security httpx katana masscan mobsf nmap nuclei scoutsuite seclists shuffledns smuggler sqlmap sslscan subfinder testssl waybackurls wpscan)
 
 for svc in "${SERVICES[@]}"; do
   TOTAL=$((TOTAL + 1))

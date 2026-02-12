@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import { callTool } from "../helpers/mcp-client.js";
-import { assertNotEmpty } from "../helpers/assertions.js";
+import { assertMatchesAny } from "../helpers/assertions.js";
 import { isServiceHealthy } from "../helpers/health.js";
 import { shouldSkip, TestCategory } from "../helpers/categories.js";
 import { TARGETS, WORDLISTS } from "../helpers/targets.js";
@@ -15,7 +15,7 @@ describe("fuzzers", () => {
         target: TARGETS.HTTPBIN_STATUS_FUZZ,
         args: ["-w", WORDLISTS.COMMON_PATHS, "-mc", "all"],
       });
-      assertNotEmpty(result);
+      assertMatchesAny(result, ["status:", "http", "ffuf", "FUZZ"]);
     });
   });
 
@@ -28,7 +28,7 @@ describe("fuzzers", () => {
         url: TARGETS.HTTPBIN,
         args: ["dir", "-w", WORDLISTS.COMMON_PATHS],
       });
-      assertNotEmpty(result);
+      assertMatchesAny(result, ["status:", "/", "gobuster"]);
     });
   });
 });

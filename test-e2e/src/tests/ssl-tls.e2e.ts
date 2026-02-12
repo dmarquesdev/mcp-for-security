@@ -7,14 +7,14 @@ import { TARGETS } from "../helpers/targets.js";
 
 describe("SSL/TLS analysis", () => {
   describe("sslscan", () => {
-    it(`scans ${TARGETS.EXAMPLE_HTTPS} TLS configuration`, { timeout: 60000 }, async (t) => {
+    it(`scans ${TARGETS.EXAMPLE_HTTPS} TLS configuration`, { timeout: 90000 }, async (t) => {
       const skip = await shouldSkip(TestCategory.PUBLIC);
       if (skip) { t.skip(skip); return; }
       if (!(await isServiceHealthy("sslscan"))) { t.skip("sslscan not healthy"); return; }
       const result = await callTool("sslscan", "do-sslscan", {
         target: TARGETS.EXAMPLE_HTTPS,
         sslscan_args: [],
-      });
+      }, { requestTimeout: 90000 });
       assertContains(result, "TLS");
     });
   });
@@ -27,7 +27,7 @@ describe("SSL/TLS analysis", () => {
       const result = await callTool("testssl", "do-testssl-protocols", {
         target: TARGETS.EXAMPLE_TLS,
         args: [],
-      });
+      }, { requestTimeout: 120000 });
       assertContains(result, "TLS");
     });
   });

@@ -9,7 +9,7 @@ import {
     assertToolCallFails,
     getResultText,
 } from "test-helpers";
-import { formatToolResult } from "mcp-shared";
+import { formatToolResult, TIMEOUT_SCHEMA, buildSpawnOptions } from "mcp-shared";
 
 describe("github-subdomains-mcp", () => {
     const GITHUB_TOKEN = "test-token-123";
@@ -25,15 +25,16 @@ describe("github-subdomains-mcp", () => {
             extended: z.boolean().optional().describe("Extended search mode"),
             exit_on_rate_limit: z.boolean().optional().describe("Exit when rate-limited"),
             raw: z.boolean().optional().describe("Display raw results"),
+            ...TIMEOUT_SCHEMA,
         },
-        async ({ domain, extended, exit_on_rate_limit, raw }) => {
+        async ({ domain, extended, exit_on_rate_limit, raw, timeoutSeconds }, extra) => {
             const toolArgs = ["-d", domain];
             if (GITHUB_TOKEN) toolArgs.push("-t", GITHUB_TOKEN);
             if (extended) toolArgs.push("-e");
             if (exit_on_rate_limit) toolArgs.push("-k");
             if (raw) toolArgs.push("-raw");
 
-            const result = await mock.spawn("github-subdomains", toolArgs);
+            const result = await mock.spawn("github-subdomains", toolArgs, buildSpawnOptions(extra, { timeoutSeconds }));
             return formatToolResult(result, { toolName: "github-subdomains", includeStderr: true });
         }
     );
@@ -150,6 +151,17 @@ describe("github-subdomains-mcp", () => {
         assert.ok(!last?.args.includes("-e"), "should not include -e");
         assert.ok(!last?.args.includes("-k"), "should not include -k");
         assert.ok(!last?.args.includes("-raw"), "should not include -raw");
+        await harness.cleanup();
+    });
+
+    it("passes timeoutSeconds to spawn options", async () => {
+        await harness.connect();
+        await assertToolCallSucceeds(harness.client, "do-github-subdomains", {
+            domain: "example.com",
+            timeoutSeconds: 60,
+        });
+        const opts = mock.lastCall()?.options;
+        assert.equal(opts?.timeoutMs, 60000);
         await harness.cleanup();
     });
 });

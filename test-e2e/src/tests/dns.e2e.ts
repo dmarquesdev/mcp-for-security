@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import { callTool } from "../helpers/mcp-client.js";
-import { assertNotEmpty } from "../helpers/assertions.js";
+import { assertMatchesAny } from "../helpers/assertions.js";
 import { isServiceHealthy } from "../helpers/health.js";
 import { shouldSkip, TestCategory } from "../helpers/categories.js";
 import { TARGETS, WORDLISTS } from "../helpers/targets.js";
@@ -15,7 +15,7 @@ describe("DNS tools", () => {
         target: TARGETS.EXAMPLE,
         args: ["-r", WORDLISTS.RESOLVERS, "-w", WORDLISTS.SUBDOMAINS],
       });
-      assertNotEmpty(result);
+      assertMatchesAny(result, [TARGETS.EXAMPLE, "dns", "resolved"]);
     });
   });
 });

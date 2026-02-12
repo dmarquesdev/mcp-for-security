@@ -9,16 +9,16 @@ import {
     assertToolCallFails,
     getResultText,
 } from "test-helpers";
-import { formatToolResult } from "mcp-shared";
-import type { ToolContent } from "mcp-shared";
+import { formatToolResult, TIMEOUT_SCHEMA, buildSpawnOptions } from "mcp-shared";
+import type { ToolContent, SpawnOptions } from "mcp-shared";
 
 describe("gobuster-mcp", () => {
     const mock = createMockSpawn();
     const harness = createTestServer("gobuster");
 
     // Shared runGobuster helper matching server implementation
-    async function runGobuster(mode: string, modeArgs: string[]): Promise<ToolContent> {
-        const result = await mock.spawn("gobuster", [mode, ...modeArgs, "--no-progress", "--no-color", "-q"]);
+    async function runGobuster(mode: string, modeArgs: string[], opts?: SpawnOptions): Promise<ToolContent> {
+        const result = await mock.spawn("gobuster", [mode, ...modeArgs, "--no-progress", "--no-color", "-q"], opts);
         return formatToolResult(result, { toolName: "gobuster" });
     }
 
@@ -35,8 +35,9 @@ describe("gobuster-mcp", () => {
             follow_redirect: z.boolean().optional().describe("Follow redirects"),
             threads: z.number().optional().describe("Concurrent threads"),
             no_tls_validation: z.boolean().optional().describe("Skip TLS verification"),
+            ...TIMEOUT_SCHEMA,
         },
-        async ({ url, wordlist, extensions, status_codes, method, follow_redirect, threads, no_tls_validation }) => {
+        async ({ url, wordlist, extensions, status_codes, method, follow_redirect, threads, no_tls_validation, timeoutSeconds }, extra) => {
             const gobusterArgs: string[] = [];
             gobusterArgs.push("-u", url);
             gobusterArgs.push("-w", wordlist);
@@ -46,7 +47,7 @@ describe("gobuster-mcp", () => {
             if (follow_redirect) gobusterArgs.push("-r");
             if (no_tls_validation) gobusterArgs.push("-k");
             if (threads) gobusterArgs.push("-t", threads.toString());
-            return runGobuster("dir", gobusterArgs);
+            return runGobuster("dir", gobusterArgs, buildSpawnOptions(extra, { timeoutSeconds }));
         }
     );
 
@@ -61,8 +62,9 @@ describe("gobuster-mcp", () => {
             show_ips: z.boolean().optional().describe("Show IP addresses"),
             show_cname: z.boolean().optional().describe("Show CNAME records"),
             threads: z.number().optional().describe("Concurrent threads"),
+            ...TIMEOUT_SCHEMA,
         },
-        async ({ domain, wordlist, resolver, show_ips, show_cname, threads }) => {
+        async ({ domain, wordlist, resolver, show_ips, show_cname, threads, timeoutSeconds }, extra) => {
             const gobusterArgs: string[] = [];
             gobusterArgs.push("-d", domain);
             gobusterArgs.push("-w", wordlist);
@@ -70,7 +72,7 @@ describe("gobuster-mcp", () => {
             if (show_ips) gobusterArgs.push("-i");
             if (show_cname) gobusterArgs.push("-c");
             if (threads) gobusterArgs.push("-t", threads.toString());
-            return runGobuster("dns", gobusterArgs);
+            return runGobuster("dns", gobusterArgs, buildSpawnOptions(extra, { timeoutSeconds }));
         }
     );
 
@@ -83,14 +85,15 @@ describe("gobuster-mcp", () => {
             wordlist: z.string().describe("Path to wordlist file"),
             timeout: z.string().optional().describe("TFTP timeout"),
             threads: z.number().optional().describe("Concurrent threads"),
+            ...TIMEOUT_SCHEMA,
         },
-        async ({ server: tftpServer, wordlist, timeout, threads }) => {
+        async ({ server: tftpServer, wordlist, timeout, threads, timeoutSeconds }, extra) => {
             const gobusterArgs: string[] = [];
             gobusterArgs.push("-s", tftpServer);
             gobusterArgs.push("-w", wordlist);
             if (timeout) gobusterArgs.push("--timeout", timeout);
             if (threads) gobusterArgs.push("-t", threads.toString());
-            return runGobuster("tftp", gobusterArgs);
+            return runGobuster("tftp", gobusterArgs, buildSpawnOptions(extra, { timeoutSeconds }));
         }
     );
 
@@ -292,5 +295,17 @@ describe("gobuster-mcp", () => {
         assert.ok(text.includes("/admin (Status: 200)"));
         assert.ok(text.includes("/login (Status: 302)"));
         await h.cleanup();
+    });
+
+    it("passes timeoutSeconds to spawn options", async () => {
+        await harness.connect();
+        await assertToolCallSucceeds(harness.client, "do-gobuster-dir", {
+            url: "https://example.com",
+            wordlist: "/usr/share/wordlists/common.txt",
+            timeoutSeconds: 60,
+        });
+        const opts = mock.lastCall()?.options;
+        assert.equal(opts?.timeoutMs, 60000);
+        await harness.cleanup();
     });
 });

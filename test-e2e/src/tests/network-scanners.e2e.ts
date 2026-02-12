@@ -7,7 +7,7 @@ import { TARGETS } from "../helpers/targets.js";
 
 describe("network scanners", () => {
   describe("nmap", () => {
-    it("scans scanme.nmap.org and finds open ports", { timeout: 90000 }, async (t) => {
+    it(`scans ${TARGETS.NMAP_SCANME} and finds open ports`, { timeout: 90000 }, async (t) => {
       const skip = await shouldSkip(TestCategory.PUBLIC);
       if (skip) { t.skip(skip); return; }
       if (!(await isServiceHealthy("nmap"))) { t.skip("nmap not healthy"); return; }

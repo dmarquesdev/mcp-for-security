@@ -9,7 +9,7 @@ import {
     assertToolCallFails,
     getResultText,
 } from "test-helpers";
-import { formatToolResult } from "mcp-shared";
+import { formatToolResult, TIMEOUT_SCHEMA, buildSpawnOptions } from "mcp-shared";
 
 describe("scoutsuite-mcp", () => {
     const mock = createMockSpawn({
@@ -34,8 +34,9 @@ describe("scoutsuite-mcp", () => {
             profile: z.string().optional().describe("Named AWS CLI profile"),
             regions: z.string().optional().describe("Comma-separated AWS regions"),
             exclude_regions: z.string().optional().describe("Comma-separated AWS regions to exclude"),
+            ...TIMEOUT_SCHEMA,
         },
-        async ({ full_report, max_workers, services, skip_services, profile, regions, exclude_regions }) => {
+        async ({ full_report, max_workers, services, skip_services, profile, regions, exclude_regions, timeoutSeconds }, extra) => {
             const scoutSuiteArgs = ["aws", "--force", "--no-browser"];
 
             if (max_workers) scoutSuiteArgs.push("--max-workers", max_workers.toString());
@@ -51,7 +52,7 @@ describe("scoutsuite-mcp", () => {
             if (regions) scoutSuiteArgs.push("--regions", regions);
             if (exclude_regions) scoutSuiteArgs.push("--exclude-regions", exclude_regions);
 
-            const result = await mock.spawn("scout", scoutSuiteArgs);
+            const result = await mock.spawn("scout", scoutSuiteArgs, buildSpawnOptions(extra, { timeoutSeconds }));
             return formatToolResult(result, { toolName: "scoutsuite", includeStderr: true, stripAnsi: true });
         }
     );
@@ -191,5 +192,15 @@ describe("scoutsuite-mcp", () => {
         await h.connect();
         await assertToolCallFails(h.client, "do-scoutsuite-aws", {});
         await h.cleanup();
+    });
+
+    it("passes timeoutSeconds to spawn options", async () => {
+        await harness.connect();
+        await assertToolCallSucceeds(harness.client, "do-scoutsuite-aws", {
+            timeoutSeconds: 60,
+        });
+        const opts = mock.lastCall()?.options;
+        assert.equal(opts?.timeoutMs, 60000);
+        await harness.cleanup();
     });
 });

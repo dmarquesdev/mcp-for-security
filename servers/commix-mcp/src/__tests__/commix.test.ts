@@ -9,7 +9,7 @@ import {
     assertToolCallFails,
     getResultText,
 } from "test-helpers";
-import { formatToolResult } from "mcp-shared";
+import { formatToolResult, TIMEOUT_SCHEMA, buildSpawnOptions } from "mcp-shared";
 
 const PYTHON_PATH = "python3";
 const COMMIX_SCRIPT = "commix.py";
@@ -23,10 +23,11 @@ describe("commix-mcp", () => {
         "Run Commix to test for command injection issues",
         {
             url: z.string().url().describe("Target URL to test"),
+            ...TIMEOUT_SCHEMA,
         },
-        async ({ url }) => {
+        async ({ url, timeoutSeconds }, extra) => {
             const allArgs = [COMMIX_SCRIPT, "-u", url, url];
-            const result = await mock.spawn(PYTHON_PATH, allArgs);
+            const result = await mock.spawn(PYTHON_PATH, allArgs, buildSpawnOptions(extra, { timeoutSeconds }));
             return formatToolResult(result, { toolName: "commix", stripAnsi: true });
         },
     );
@@ -89,6 +90,17 @@ describe("commix-mcp", () => {
         await assertToolCallFails(harness.client, "do-commix", {
             url: "not-a-url",
         });
+        await harness.cleanup();
+    });
+
+    it("passes timeoutSeconds to spawn options", async () => {
+        await harness.connect();
+        await assertToolCallSucceeds(harness.client, "do-commix", {
+            url: "http://example.com/vuln",
+            timeoutSeconds: 60,
+        });
+        const opts = mock.lastCall()?.options;
+        assert.equal(opts?.timeoutMs, 60000);
         await harness.cleanup();
     });
 });

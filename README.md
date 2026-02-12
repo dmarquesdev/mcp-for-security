@@ -9,7 +9,7 @@
 
 ## 🚀 Project Overview
 
-**MCP for Security** repository contains 29 Model Context Protocol (MCP) server implementations for various security testing tools, making them accessible through a standardized interface. All servers live in `servers/` and share a common utility library (`packages/mcp-shared/`). The repo uses npm workspaces and supports both stdio and HTTP transport.
+**MCP for Security** repository contains 28 Model Context Protocol (MCP) server implementations for various security testing tools, making them accessible through a standardized interface. All servers live in `servers/` and share a common utility library (`packages/mcp-shared/`). The repo uses npm workspaces and supports both stdio and HTTP transport.
 
 ---
 
@@ -17,7 +17,7 @@
 
 ### Docker (Recommended)
 
-Run all 29 MCP servers behind a single Nginx gateway using Docker Compose:
+Run all 28 MCP servers behind a single Nginx gateway using Docker Compose:
 
 ```bash
 docker compose up                             # Start gateway + all servers
@@ -46,7 +46,6 @@ Since each MCP server may require different dependencies, the `start.sh` bash sc
 
 | Tool | Description | Detailed Documentation |
 |------|-------------|------------------------|
-| Amass | Advanced subdomain enumeration and reconnaissance tool | [Amass MCP Documentation](./servers/amass-mcp/) |
 | Alterx | Pattern-based wordlist generator for subdomain discovery | [Alterx MCP Documentation](./servers/alterx-mcp/) |
 | Arjun | Run Arjun to discover hidden HTTP parameters | [Arjun MCP Documentation](./servers/arjun-mcp/) |
 | Asnmap | ASN to CIDR mapping and network intelligence | [Asnmap MCP Documentation](./servers/asnmap-mcp/) |
@@ -80,9 +79,6 @@ Since each MCP server may require different dependencies, the `start.sh` bash sc
 
 ### Alterx MCP  
 Generates custom wordlists for subdomain discovery using pattern-based permutations.
-
-### Amass MCP  
-Advanced reconnaissance tool for subdomain enumeration and intelligence gathering with both passive and active modes.
 
 ### arjun MCP  
 Discovers hidden HTTP parameters on web applications by scanning URLs, supporting custom wordlists, multiple methods, and adjustable scanning speeds.
@@ -272,7 +268,7 @@ cp .env.example .env                           # Configure credentials (MobSF, G
 The project includes a comprehensive test suite (~300 tests) that runs **without any security tools installed**. Server tests use `InMemoryTransport` with mock spawn to validate tool registration, Zod schemas, argument construction, and response formatting through the real MCP protocol.
 
 ```bash
-# Run all tests (mcp-shared + all 28 servers + integration)
+# Run all tests (mcp-shared + all 27 servers + integration)
 npm test
 
 # Run tests for a single server

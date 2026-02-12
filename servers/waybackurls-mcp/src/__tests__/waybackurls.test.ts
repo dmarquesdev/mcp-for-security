@@ -9,7 +9,7 @@ import {
     assertToolCallFails,
     getResultText,
 } from "test-helpers";
-import { formatToolResult } from "mcp-shared";
+import { formatToolResult, TIMEOUT_SCHEMA, buildSpawnOptions } from "mcp-shared";
 
 describe("waybackurls-mcp", () => {
     const mock = createMockSpawn();
@@ -21,10 +21,11 @@ describe("waybackurls-mcp", () => {
         {
             target: z.string().url().describe("Target domain to retrieve historical URLs from"),
             noSub: z.boolean().nullable().describe("When true, only retrieves URLs from the exact domain, excluding subdomains"),
+            ...TIMEOUT_SCHEMA,
         },
-        async ({ target, noSub }) => {
+        async ({ target, noSub, timeoutSeconds }, extra) => {
             const waybackurlsArgs = [target, ...(noSub ? ['--no-subs'] : [])];
-            const result = await mock.spawn("waybackurls", waybackurlsArgs);
+            const result = await mock.spawn("waybackurls", waybackurlsArgs, buildSpawnOptions(extra, { timeoutSeconds }));
             return formatToolResult(result, { toolName: "waybackurls" });
         }
     );
@@ -121,6 +122,18 @@ describe("waybackurls-mcp", () => {
         await assertToolCallFails(harness.client, "do-waybackurls", {
             target: "https://example.com",
         });
+        await harness.cleanup();
+    });
+
+    it("passes timeoutSeconds to spawn options", async () => {
+        await harness.connect();
+        await assertToolCallSucceeds(harness.client, "do-waybackurls", {
+            target: "https://example.com",
+            noSub: false,
+            timeoutSeconds: 60,
+        });
+        const opts = mock.lastCall()?.options;
+        assert.equal(opts?.timeoutMs, 60000);
         await harness.cleanup();
     });
 });

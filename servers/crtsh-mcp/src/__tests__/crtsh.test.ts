@@ -8,6 +8,7 @@ import {
     assertToolCallFails,
     getResultText,
 } from "test-helpers";
+import { TIMEOUT_SCHEMA } from "mcp-shared";
 
 describe("crtsh-mcp", () => {
     const harness = createTestServer("crtsh");
@@ -18,6 +19,7 @@ describe("crtsh-mcp", () => {
         "Discovers subdomains from SSL certificate logs",
         {
             target: z.string().describe("Target domain to analyze (e.g., example.com)."),
+            ...TIMEOUT_SCHEMA,
         },
         async ({ target }) => {
             // Mock: return fake subdomain data instead of calling crt.sh API
@@ -75,6 +77,15 @@ describe("crtsh-mcp", () => {
     it("rejects when target is missing", async () => {
         await harness.connect();
         await assertToolCallFails(harness.client, "do-crtsh", {});
+        await harness.cleanup();
+    });
+
+    it("accepts timeoutSeconds parameter", async () => {
+        await harness.connect();
+        await assertToolCallSucceeds(harness.client, "do-crtsh", {
+            target: "example.com",
+            timeoutSeconds: 60,
+        });
         await harness.cleanup();
     });
 });

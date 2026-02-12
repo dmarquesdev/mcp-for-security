@@ -35,6 +35,19 @@ export function assertNotEmpty(
   );
 }
 
+export function assertMatchesAny(
+  result: Record<string, unknown>,
+  patterns: string[],
+  message?: string,
+): void {
+  const text = getContentText(result).toLowerCase();
+  const matched = patterns.some((p) => text.includes(p.toLowerCase()));
+  assert.ok(
+    matched,
+    message || `Expected output to contain at least one of: ${patterns.join(", ")}\nGot: ${text.slice(0, 500)}`,
+  );
+}
+
 export function assertIsJson(
   result: Record<string, unknown>,
   message?: string,

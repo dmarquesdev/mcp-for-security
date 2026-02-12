@@ -9,7 +9,7 @@ import {
     assertToolCallFails,
     getResultText,
 } from "test-helpers";
-import { formatToolResult } from "mcp-shared";
+import { formatToolResult, TIMEOUT_SCHEMA, buildSpawnOptions } from "mcp-shared";
 
 describe("nmap-mcp", () => {
     const mock = createMockSpawn();
@@ -22,9 +22,10 @@ describe("nmap-mcp", () => {
         {
             target: z.string().describe("Target ip to detect open ports"),
             nmap_args: z.array(z.string()).describe("Additional nmap arguments"),
+            ...TIMEOUT_SCHEMA,
         },
-        async ({ target, nmap_args }) => {
-            const result = await mock.spawn("nmap", [...nmap_args, target]);
+        async ({ target, nmap_args, timeoutSeconds }, extra) => {
+            const result = await mock.spawn("nmap", [...nmap_args, target], buildSpawnOptions(extra, { timeoutSeconds }));
             return formatToolResult(result, { toolName: "nmap", includeStderr: true });
         }
     );
@@ -101,6 +102,18 @@ describe("nmap-mcp", () => {
         await assertToolCallFails(harness.client, "do-nmap", {
             target: "10.0.0.1",
         });
+        await harness.cleanup();
+    });
+
+    it("passes timeoutSeconds to spawn options", async () => {
+        await harness.connect();
+        await assertToolCallSucceeds(harness.client, "do-nmap", {
+            target: "192.168.1.1",
+            nmap_args: ["-sV"],
+            timeoutSeconds: 60,
+        });
+        const opts = mock.lastCall()?.options;
+        assert.equal(opts?.timeoutMs, 60000);
         await harness.cleanup();
     });
 });

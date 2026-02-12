@@ -40,12 +40,13 @@ export async function assertToolCallSucceeds(
 
 /**
  * Assert that a tool call with the given arguments fails (throws or returns
- * isError: true).
+ * isError: true). Optionally verify the error message matches an expected pattern.
  */
 export async function assertToolCallFails(
     client: Client,
     toolName: string,
-    args: Record<string, unknown>
+    args: Record<string, unknown>,
+    expectedPattern?: string | RegExp
 ): Promise<void> {
     try {
         const result = (await client.callTool({
@@ -54,6 +55,18 @@ export async function assertToolCallFails(
         })) as ToolCallResult;
 
         if (result.isError) {
+            if (expectedPattern) {
+                const text = result.content?.[0]?.text ?? "";
+                const matches =
+                    expectedPattern instanceof RegExp
+                        ? expectedPattern.test(text)
+                        : text.includes(expectedPattern);
+                if (!matches) {
+                    throw new Error(
+                        `Tool ${toolName} failed as expected, but error "${text.slice(0, 200)}" did not match pattern: ${expectedPattern}`
+                    );
+                }
+            }
             return; // Expected failure via isError
         }
 
@@ -65,6 +78,12 @@ export async function assertToolCallFails(
         if (
             error instanceof Error &&
             error.message.includes("Expected tool call")
+        ) {
+            throw error;
+        }
+        if (
+            error instanceof Error &&
+            error.message.includes("did not match pattern")
         ) {
             throw error;
         }

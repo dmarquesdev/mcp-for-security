@@ -9,7 +9,7 @@ import {
     assertToolCallFails,
     getResultText,
 } from "test-helpers";
-import { formatToolResult } from "mcp-shared";
+import { formatToolResult, TIMEOUT_SCHEMA, buildSpawnOptions } from "mcp-shared";
 
 describe("wpscan-mcp", () => {
     const mock = createMockSpawn();
@@ -28,8 +28,9 @@ describe("wpscan-mcp", () => {
             cookies: z.string().optional(),
             force: z.boolean().optional(),
             enumerate: z.array(z.enum(["vp", "ap", "p", "vt", "at", "t", "tt", "cb", "dbe"])),
+            ...TIMEOUT_SCHEMA,
         },
-        async ({ url, detection_mode, random_user_agent, max_threads, disable_tls_checks, proxy, cookies, force, enumerate }) => {
+        async ({ url, detection_mode, random_user_agent, max_threads, disable_tls_checks, proxy, cookies, force, enumerate, timeoutSeconds }, extra) => {
             const wpscanArgs = ["-u", url];
             if (detection_mode) wpscanArgs.push("--detection-mode", detection_mode);
             if (random_user_agent) wpscanArgs.push("--random-user-agent");
@@ -40,7 +41,7 @@ describe("wpscan-mcp", () => {
             if (force) wpscanArgs.push("--force");
             if (enumerate && enumerate.length > 0) wpscanArgs.push("-e", enumerate.join(","));
 
-            const result = await mock.spawn("wpscan", wpscanArgs);
+            const result = await mock.spawn("wpscan", wpscanArgs, buildSpawnOptions(extra, { timeoutSeconds }));
             return formatToolResult(result, { toolName: "wpscan", includeStderr: true });
         }
     );
@@ -247,5 +248,17 @@ describe("wpscan-mcp", () => {
         assert.ok(text.includes("WordPress version 6.4.2"));
         assert.ok(text.includes("3 vulnerabilities found"));
         await h.cleanup();
+    });
+
+    it("passes timeoutSeconds to spawn options", async () => {
+        await harness.connect();
+        await assertToolCallSucceeds(harness.client, "do-wpscan", {
+            url: "https://example.com",
+            enumerate: ["vp"],
+            timeoutSeconds: 60,
+        });
+        const opts = mock.lastCall()?.options;
+        assert.equal(opts?.timeoutMs, 60000);
+        await harness.cleanup();
     });
 });

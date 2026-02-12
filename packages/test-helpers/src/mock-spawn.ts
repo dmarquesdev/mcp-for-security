@@ -17,6 +17,12 @@ export interface MockSpawnOptions {
     defaultResult?: SpawnResult;
     /** Map of binary names to specific results. */
     resultMap?: Map<string, SpawnResult>;
+    /** Simulate spawn rejection (e.g., binary not found). */
+    shouldReject?: boolean;
+    /** Custom rejection error. */
+    rejectError?: Error;
+    /** Simulate slow process execution (milliseconds). */
+    delayMs?: number;
 }
 
 /**
@@ -38,6 +44,15 @@ export function createMockSpawn(options: MockSpawnOptions = {}) {
         spawnOptions?: SpawnOptions
     ): Promise<SpawnResult> {
         calls.push({ binary, args, options: spawnOptions });
+
+        if (options.shouldReject) {
+            throw options.rejectError ?? new Error(`Failed to start process: ${binary}`);
+        }
+
+        if (options.delayMs) {
+            await new Promise((resolve) => setTimeout(resolve, options.delayMs));
+        }
+
         return options.resultMap?.get(binary) ?? defaultResult;
     }
 

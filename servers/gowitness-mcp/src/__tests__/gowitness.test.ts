@@ -9,7 +9,8 @@ import {
     assertToolCallFails,
     getResultText,
 } from "test-helpers";
-import { formatToolResult } from "mcp-shared";
+import { formatToolResult, sanitizePath, TIMEOUT_SCHEMA, buildSpawnOptions } from "mcp-shared";
+import { resolve } from "path";
 
 describe("gowitness-mcp", () => {
     const mock = createMockSpawn();
@@ -31,6 +32,7 @@ describe("gowitness-mcp", () => {
             write_db: z.boolean().optional().describe("Write to SQLite"),
             write_jsonl: z.boolean().optional().describe("Write as JSON lines"),
             user_agent: z.string().optional().describe("Custom user-agent"),
+            ...TIMEOUT_SCHEMA,
         },
         async ({
             url,
@@ -44,7 +46,8 @@ describe("gowitness-mcp", () => {
             write_db,
             write_jsonl,
             user_agent,
-        }) => {
+            timeoutSeconds,
+        }, extra) => {
             const spawnArgs = ["scan", "single", "--url", url];
 
             if (chrome_window_x) spawnArgs.push("--chrome-window-x", chrome_window_x.toString());
@@ -62,7 +65,7 @@ describe("gowitness-mcp", () => {
                 spawnArgs.push("--write-none");
             }
 
-            const result = await mock.spawn("gowitness", spawnArgs);
+            const result = await mock.spawn("gowitness", spawnArgs, buildSpawnOptions(extra, { timeoutSeconds }));
             const output = result.stdout + result.stderr;
 
             if (result.exitCode !== 0) {
@@ -85,14 +88,15 @@ describe("gowitness-mcp", () => {
         {
             screenshot_path: z.string().optional().describe("Path to screenshots"),
             db_uri: z.string().optional().describe("Database URI"),
+            ...TIMEOUT_SCHEMA,
         },
-        async ({ screenshot_path, db_uri }) => {
+        async ({ screenshot_path, db_uri, timeoutSeconds }, extra) => {
             const spawnArgs = ["report"];
 
             if (screenshot_path) spawnArgs.push("--screenshot-path", screenshot_path);
             if (db_uri) spawnArgs.push("--write-db-uri", db_uri);
 
-            const result = await mock.spawn("gowitness", spawnArgs);
+            const result = await mock.spawn("gowitness", spawnArgs, buildSpawnOptions(extra, { timeoutSeconds }));
             return formatToolResult(result, { toolName: "gowitness-report", includeStderr: true });
         }
     );
@@ -110,6 +114,55 @@ describe("gowitness-mcp", () => {
                 content: [{
                     type: "text" as const,
                     text: `Found 0 screenshot files in ${screenshot_dir}`,
+                }],
+            };
+        }
+    );
+
+    // Tool 4: do-gowitness-batch-screenshot (validates path via sanitizePath)
+    harness.server.tool(
+        "do-gowitness-batch-screenshot",
+        "Batch screenshots from URL array",
+        {
+            urls: z.array(z.string().url()).describe("URLs to screenshot"),
+            screenshot_path: z.string().describe("Path to store screenshots"),
+            ...TIMEOUT_SCHEMA,
+        },
+        async ({ urls, screenshot_path, timeoutSeconds }, extra) => {
+            const safeScreenshotPath = sanitizePath(screenshot_path, process.cwd());
+            const spawnArgs = ["scan", "file", "-f", "urls.txt", "--screenshot-path", safeScreenshotPath, "--write-none"];
+
+            const result = await mock.spawn("gowitness", spawnArgs, buildSpawnOptions(extra, { timeoutSeconds }));
+            const output = result.stdout + result.stderr;
+
+            if (result.exitCode !== 0) {
+                throw new Error(`gowitness exited with code ${result.exitCode}:\n${output}`);
+            }
+
+            return {
+                content: [{
+                    type: "text" as const,
+                    text: `Batch screenshot completed for ${urls.length} URLs.\nScreenshots saved to: ${safeScreenshotPath}`,
+                }],
+            };
+        }
+    );
+
+    // Tool 5: do-gowitness-read-binary (validates path via sanitizePath)
+    harness.server.tool(
+        "do-gowitness-read-binary",
+        "Read a screenshot file as binary data",
+        {
+            file_path: z.string().describe("Path to the screenshot file"),
+            screenshot_dir: z.string().optional().describe("Base directory for screenshots"),
+        },
+        async ({ file_path, screenshot_dir }) => {
+            const baseDir = resolve(screenshot_dir || "./screenshots");
+            const fullPath = sanitizePath(file_path, baseDir);
+            return {
+                content: [{
+                    type: "text" as const,
+                    text: `File read successfully from ${fullPath}`,
                 }],
             };
         }
@@ -302,5 +355,104 @@ describe("gowitness-mcp", () => {
         const text = getResultText(result);
         assert.ok(text.includes("Found 0 screenshot files"));
         await harness.cleanup();
+    });
+
+    it("passes timeoutSeconds to spawn options", async () => {
+        await harness.connect();
+        await assertToolCallSucceeds(harness.client, "do-gowitness-screenshot", {
+            url: "https://example.com",
+            timeoutSeconds: 60,
+        });
+        const opts = mock.lastCall()?.options;
+        assert.equal(opts?.timeoutMs, 60000);
+        await harness.cleanup();
+    });
+
+    // --- do-gowitness-batch-screenshot tests ---
+
+    it("registers the do-gowitness-batch-screenshot tool", async () => {
+        await harness.connect();
+        await assertToolExists(harness.client, "do-gowitness-batch-screenshot");
+        await harness.cleanup();
+    });
+
+    it("batch-screenshot: passes scan file command with screenshot path", async () => {
+        await harness.connect();
+        await assertToolCallSucceeds(harness.client, "do-gowitness-batch-screenshot", {
+            urls: ["https://example.com", "https://test.com"],
+            screenshot_path: "./screenshots",
+        });
+        assert.equal(mock.calls.length, 1);
+        assert.equal(mock.calls[0].binary, "gowitness");
+        assert.ok(mock.calls[0].args.includes("scan"));
+        assert.ok(mock.calls[0].args.includes("file"));
+        await harness.cleanup();
+    });
+
+    it("batch-screenshot: rejects path traversal in screenshot_path", async () => {
+        await harness.connect();
+        await assertToolCallFails(harness.client, "do-gowitness-batch-screenshot", {
+            urls: ["https://example.com"],
+            screenshot_path: "../../etc/passwd",
+        });
+        await harness.cleanup();
+    });
+
+    it("batch-screenshot: rejects absolute path outside cwd", async () => {
+        await harness.connect();
+        await assertToolCallFails(harness.client, "do-gowitness-batch-screenshot", {
+            urls: ["https://example.com"],
+            screenshot_path: "/etc/shadow",
+        });
+        await harness.cleanup();
+    });
+
+    // --- do-gowitness-read-binary tests ---
+
+    it("registers the do-gowitness-read-binary tool", async () => {
+        await harness.connect();
+        await assertToolExists(harness.client, "do-gowitness-read-binary");
+        await harness.cleanup();
+    });
+
+    it("read-binary: rejects path traversal in file_path", async () => {
+        await harness.connect();
+        await assertToolCallFails(harness.client, "do-gowitness-read-binary", {
+            file_path: "../../../etc/passwd",
+        });
+        await harness.cleanup();
+    });
+
+    it("read-binary: rejects absolute path outside base dir", async () => {
+        await harness.connect();
+        await assertToolCallFails(harness.client, "do-gowitness-read-binary", {
+            file_path: "/etc/shadow",
+        });
+        await harness.cleanup();
+    });
+
+    it("read-binary: accepts safe relative path", async () => {
+        await harness.connect();
+        const result = await assertToolCallSucceeds(harness.client, "do-gowitness-read-binary", {
+            file_path: "screenshot.png",
+            screenshot_dir: process.cwd(),
+        });
+        const text = getResultText(result);
+        assert.ok(text.includes("File read successfully"));
+        await harness.cleanup();
+    });
+
+    // --- Path traversal: sanitizePath unit coverage ---
+
+    it("sanitizePath rejects traversal with dot-dot segments", () => {
+        assert.throws(
+            () => sanitizePath("../../etc/passwd", "/tmp/screenshots"),
+            /Path traversal detected/,
+        );
+    });
+
+    it("sanitizePath allows path within base directory", () => {
+        const result = sanitizePath("img/shot.png", "/tmp/screenshots");
+        assert.equal(result, "/tmp/screenshots/img/shot.png");
     });
 });

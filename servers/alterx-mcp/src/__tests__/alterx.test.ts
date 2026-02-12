@@ -9,7 +9,7 @@ import {
     assertToolCallFails,
     getResultText,
 } from "test-helpers";
-import { formatToolResult } from "mcp-shared";
+import { formatToolResult, TIMEOUT_SCHEMA, buildSpawnOptions } from "mcp-shared";
 
 describe("alterx-mcp", () => {
     const mock = createMockSpawn();
@@ -21,13 +21,14 @@ describe("alterx-mcp", () => {
         {
             domain: z.string().describe("Target domain or subdomains"),
             pattern: z.string().describe("Pattern template for generating wordlist variations"),
-            outputFilePath: z.string().nullable().describe("Path where the generated wordlist should be saved (optional)"),
+            outputFilePath: z.string().optional().describe("Path where the generated wordlist should be saved (optional)"),
+            ...TIMEOUT_SCHEMA,
         },
-        async ({ domain, pattern, outputFilePath }) => {
+        async ({ domain, pattern, outputFilePath, timeoutSeconds }, extra) => {
             const alterxArgs = ["-l", domain, "-p", pattern];
             if (outputFilePath != null) alterxArgs.push("-o", outputFilePath);
 
-            const result = await mock.spawn("alterx", alterxArgs);
+            const result = await mock.spawn("alterx", alterxArgs, buildSpawnOptions(extra, { timeoutSeconds }));
             return formatToolResult(result, { toolName: "alterx" });
         },
     );
@@ -45,7 +46,6 @@ describe("alterx-mcp", () => {
         await assertToolCallSucceeds(harness.client, "do-alterx", {
             domain: "example.com",
             pattern: "{{word}}-{{sub}}.{{suffix}}",
-            outputFilePath: null,
         });
         assert.equal(mock.calls.length, 1);
         assert.equal(mock.calls[0].binary, "alterx");
@@ -73,12 +73,11 @@ describe("alterx-mcp", () => {
         await harness.cleanup();
     });
 
-    it("omits -o flag when outputFilePath is null", async () => {
+    it("omits -o flag when outputFilePath is omitted", async () => {
         await harness.connect();
         await assertToolCallSucceeds(harness.client, "do-alterx", {
             domain: "example.com",
             pattern: "{{word}}.{{suffix}}",
-            outputFilePath: null,
         });
         const last = mock.lastCall();
         assert.ok(last);
@@ -101,7 +100,7 @@ describe("alterx-mcp", () => {
             {
                 domain: z.string(),
                 pattern: z.string(),
-                outputFilePath: z.string().nullable(),
+                outputFilePath: z.string().optional(),
             },
             async ({ domain, pattern, outputFilePath }) => {
                 const args = ["-l", domain, "-p", pattern];
@@ -114,7 +113,6 @@ describe("alterx-mcp", () => {
         const result = await assertToolCallSucceeds(h.client, "do-alterx", {
             domain: "example.com",
             pattern: "{{word}}-api.{{suffix}}",
-            outputFilePath: null,
         });
         const text = getResultText(result);
         assert.ok(text.includes("dev-api.example.com"));
@@ -126,7 +124,6 @@ describe("alterx-mcp", () => {
         await harness.connect();
         await assertToolCallFails(harness.client, "do-alterx", {
             pattern: "{{word}}.{{suffix}}",
-            outputFilePath: null,
         });
         await harness.cleanup();
     });
@@ -135,17 +132,31 @@ describe("alterx-mcp", () => {
         await harness.connect();
         await assertToolCallFails(harness.client, "do-alterx", {
             domain: "example.com",
-            outputFilePath: null,
         });
         await harness.cleanup();
     });
 
-    it("rejects when outputFilePath is missing entirely", async () => {
+    it("succeeds when outputFilePath is omitted entirely", async () => {
         await harness.connect();
-        await assertToolCallFails(harness.client, "do-alterx", {
+        await assertToolCallSucceeds(harness.client, "do-alterx", {
             domain: "example.com",
             pattern: "{{word}}.{{suffix}}",
         });
+        const last = mock.lastCall();
+        assert.ok(last);
+        assert.ok(!last.args.includes("-o"));
+        await harness.cleanup();
+    });
+
+    it("passes timeoutSeconds to spawn options", async () => {
+        await harness.connect();
+        await assertToolCallSucceeds(harness.client, "do-alterx", {
+            domain: "example.com",
+            pattern: "{{word}}.{{suffix}}",
+            timeoutSeconds: 60,
+        });
+        const opts = mock.lastCall()?.options;
+        assert.equal(opts?.timeoutMs, 60000);
         await harness.cleanup();
     });
 });

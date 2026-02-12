@@ -9,7 +9,7 @@ import {
     assertToolCallFails,
     getResultText,
 } from "test-helpers";
-import { formatToolResult } from "mcp-shared";
+import { formatToolResult, TIMEOUT_SCHEMA, buildSpawnOptions } from "mcp-shared";
 
 const SHUFFLEDNS_PATH = "shuffledns";
 const MASSDNS_PATH = "/usr/bin/massdns";
@@ -27,12 +27,13 @@ describe("shuffledns-mcp", () => {
             mode: z.enum(["bruteforce", "resolve", "filter"]).describe("Operation mode"),
             wordlist: z.string().describe("Wordlist file path"),
             rateLimit: z.number().optional().describe("Rate limit for requests"),
+            ...TIMEOUT_SCHEMA,
         },
-        async ({ target, resolver, mode, wordlist, rateLimit }) => {
+        async ({ target, resolver, mode, wordlist, rateLimit, timeoutSeconds }, extra) => {
             const shufflednsArgs = ["-d", target, "-r", resolver, "-mode", mode, "-w", wordlist, "-m", MASSDNS_PATH, "-silent"];
             if (rateLimit) shufflednsArgs.push("-t", rateLimit.toString());
 
-            const result = await mock.spawn(SHUFFLEDNS_PATH, shufflednsArgs);
+            const result = await mock.spawn(SHUFFLEDNS_PATH, shufflednsArgs, buildSpawnOptions(extra, { timeoutSeconds }));
             return formatToolResult(result, { toolName: "shuffledns" });
         },
     );
@@ -177,6 +178,20 @@ describe("shuffledns-mcp", () => {
             resolver: "/tmp/resolvers.txt",
             mode: "bruteforce",
         });
+        await harness.cleanup();
+    });
+
+    it("passes timeoutSeconds to spawn options", async () => {
+        await harness.connect();
+        await assertToolCallSucceeds(harness.client, "do-shuffledns", {
+            target: "example.com",
+            resolver: "/tmp/resolvers.txt",
+            mode: "bruteforce",
+            wordlist: "/tmp/wordlist.txt",
+            timeoutSeconds: 60,
+        });
+        const opts = mock.lastCall()?.options;
+        assert.equal(opts?.timeoutMs, 60000);
         await harness.cleanup();
     });
 });

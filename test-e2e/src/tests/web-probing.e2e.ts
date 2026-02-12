@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import { callTool } from "../helpers/mcp-client.js";
-import { assertContains, assertNotEmpty } from "../helpers/assertions.js";
+import { assertContains } from "../helpers/assertions.js";
 import { isServiceHealthy } from "../helpers/health.js";
 import { shouldSkip, TestCategory } from "../helpers/categories.js";
 import { TARGETS } from "../helpers/targets.js";
@@ -14,7 +14,7 @@ describe("web probing", () => {
       const result = await callTool("httpx", "do-httpx", {
         target: [TARGETS.EXAMPLE],
       });
-      assertContains(result, "google.com");
+      assertContains(result, TARGETS.EXAMPLE);
     });
   });
 
@@ -27,19 +27,19 @@ describe("web probing", () => {
         target: [TARGETS.EXAMPLE_HTTPS],
         depth: 1,
       });
-      assertContains(result, "google.com");
+      assertContains(result, TARGETS.EXAMPLE);
     });
   });
 
   describe("waybackurls", () => {
-    it("finds archived URLs for scanme.nmap.org", { timeout: 120000 }, async (t) => {
+    it(`finds archived URLs for ${TARGETS.NMAP_SCANME}`, { timeout: 120000 }, async (t) => {
       const skip = await shouldSkip(TestCategory.PUBLIC);
       if (skip) { t.skip(skip); return; }
       if (!(await isServiceHealthy("waybackurls"))) { t.skip("waybackurls not healthy"); return; }
       const result = await callTool("waybackurls", "do-waybackurls", {
         target: TARGETS.NMAP_SCANME,
       }, { requestTimeout: 120000 });
-      assertNotEmpty(result);
+      assertContains(result, TARGETS.NMAP_SCANME);
     });
   });
 });

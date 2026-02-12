@@ -9,7 +9,7 @@ import {
     assertToolCallFails,
     getResultText,
 } from "test-helpers";
-import { formatToolResult } from "mcp-shared";
+import { formatToolResult, TIMEOUT_SCHEMA, buildSpawnOptions } from "mcp-shared";
 
 describe("subfinder-mcp", () => {
     const mock = createMockSpawn();
@@ -34,8 +34,9 @@ describe("subfinder-mcp", () => {
             match: z.array(z.string()).optional().describe("Match subdomain patterns to include"),
             filter: z.array(z.string()).optional().describe("Filter out subdomain patterns to exclude"),
             verbose: z.boolean().optional().describe("Show verbose output with additional details"),
+            ...TIMEOUT_SCHEMA,
         },
-        async ({ domain, sources, exclude_sources, all, recursive, json, active, collect_sources, ip, timeout, rate_limit, resolvers, match, filter, verbose }) => {
+        async ({ domain, sources, exclude_sources, all, recursive, json, active, collect_sources, ip, timeout, rate_limit, resolvers, match, filter, verbose, timeoutSeconds }, extra) => {
             const subfinderArgs = ["-d", domain, "-silent"];
 
             if (sources && sources.length > 0) subfinderArgs.push("-s", sources.join(","));
@@ -53,7 +54,7 @@ describe("subfinder-mcp", () => {
             if (filter && filter.length > 0) subfinderArgs.push("-f", filter.join(","));
             if (verbose) subfinderArgs.push("-v");
 
-            const result = await mock.spawn("subfinder", subfinderArgs);
+            const result = await mock.spawn("subfinder", subfinderArgs, buildSpawnOptions(extra, { timeoutSeconds }));
             return formatToolResult(result, { toolName: "subfinder" });
         }
     );
@@ -133,6 +134,17 @@ describe("subfinder-mcp", () => {
         await assertToolCallFails(harness.client, "do-subfinder", {
             sources: ["crtsh"],
         });
+        await harness.cleanup();
+    });
+
+    it("passes timeoutSeconds to spawn options", async () => {
+        await harness.connect();
+        await assertToolCallSucceeds(harness.client, "do-subfinder", {
+            domain: "example.com",
+            timeoutSeconds: 60,
+        });
+        const opts = mock.lastCall()?.options;
+        assert.equal(opts?.timeoutMs, 60000);
         await harness.cleanup();
     });
 });

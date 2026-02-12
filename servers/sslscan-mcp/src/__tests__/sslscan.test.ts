@@ -9,7 +9,7 @@ import {
     assertToolCallFails,
     getResultText,
 } from "test-helpers";
-import { formatToolResult } from "mcp-shared";
+import { formatToolResult, TIMEOUT_SCHEMA, buildSpawnOptions } from "mcp-shared";
 
 describe("sslscan-mcp", () => {
     const mock = createMockSpawn();
@@ -21,9 +21,10 @@ describe("sslscan-mcp", () => {
         {
             target: z.string().url().describe("Target URL to scan (must begin with https://)"),
             sslscan_args: z.array(z.string()).describe("Additional sslscan arguments (e.g. --show-certificate, --no-colour, --ssl2, --tls13, --xml)"),
+            ...TIMEOUT_SCHEMA,
         },
-        async ({ target, sslscan_args }) => {
-            const result = await mock.spawn("sslscan", [...sslscan_args, target]);
+        async ({ target, sslscan_args, timeoutSeconds }, extra) => {
+            const result = await mock.spawn("sslscan", [...sslscan_args, target], buildSpawnOptions(extra, { timeoutSeconds }));
             return formatToolResult(result, { toolName: "sslscan", includeStderr: true });
         }
     );
@@ -119,6 +120,18 @@ describe("sslscan-mcp", () => {
         await assertToolCallFails(harness.client, "do-sslscan", {
             target: "https://example.com",
         });
+        await harness.cleanup();
+    });
+
+    it("passes timeoutSeconds to spawn options", async () => {
+        await harness.connect();
+        await assertToolCallSucceeds(harness.client, "do-sslscan", {
+            target: "https://example.com",
+            sslscan_args: [],
+            timeoutSeconds: 60,
+        });
+        const opts = mock.lastCall()?.options;
+        assert.equal(opts?.timeoutMs, 60000);
         await harness.cleanup();
     });
 });

@@ -9,7 +9,7 @@ import {
     assertToolCallFails,
     getResultText,
 } from "test-helpers";
-import { formatToolResult } from "mcp-shared";
+import { formatToolResult, TIMEOUT_SCHEMA, buildSpawnOptions } from "mcp-shared";
 
 describe("cero-mcp", () => {
     const mock = createMockSpawn();
@@ -23,13 +23,14 @@ describe("cero-mcp", () => {
             concurrency: z.number().optional().describe("Maximum number of concurrent TLS connections."),
             ports: z.array(z.string()).optional().describe("List of TLS ports to scan."),
             timeOut: z.number().optional().describe("Maximum time (in seconds) to wait for a TLS handshake."),
+            ...TIMEOUT_SCHEMA,
         },
-        async ({ target, concurrency, ports, timeOut }) => {
+        async ({ target, concurrency, ports, timeOut, timeoutSeconds }, extra) => {
             const ceroArgs = [target];
             if (concurrency) ceroArgs.push("-c", concurrency.toString());
             if (ports && ports.length > 0) ceroArgs.push("-p", ports.join(","));
             if (timeOut) ceroArgs.push("-t", timeOut.toString());
-            const result = await mock.spawn("cero", ceroArgs);
+            const result = await mock.spawn("cero", ceroArgs, buildSpawnOptions(extra, { timeoutSeconds }));
             return formatToolResult(result, { toolName: "cero" });
         }
     );
@@ -148,6 +149,17 @@ describe("cero-mcp", () => {
         await assertToolCallFails(harness.client, "do-cero", {
             concurrency: 50,
         });
+        await harness.cleanup();
+    });
+
+    it("passes timeoutSeconds to spawn options", async () => {
+        await harness.connect();
+        await assertToolCallSucceeds(harness.client, "do-cero", {
+            target: "example.com",
+            timeoutSeconds: 60,
+        });
+        const opts = mock.lastCall()?.options;
+        assert.equal(opts?.timeoutMs, 60000);
         await harness.cleanup();
     });
 });

@@ -9,7 +9,7 @@ import {
     assertToolCallFails,
     getResultText,
 } from "test-helpers";
-import { formatToolResult } from "mcp-shared";
+import { formatToolResult, TIMEOUT_SCHEMA, buildSpawnOptions } from "mcp-shared";
 
 describe("ffuf-mcp", () => {
     const mock = createMockSpawn();
@@ -21,9 +21,10 @@ describe("ffuf-mcp", () => {
         {
             url: z.string().url(),
             ffuf_args: z.array(z.string()),
+            ...TIMEOUT_SCHEMA,
         },
-        async ({ url, ffuf_args }) => {
-            const result = await mock.spawn("ffuf", ["-u", url, ...ffuf_args]);
+        async ({ url, ffuf_args, timeoutSeconds }, extra) => {
+            const result = await mock.spawn("ffuf", ["-u", url, ...ffuf_args], buildSpawnOptions(extra, { timeoutSeconds }));
             return formatToolResult(result, { toolName: "ffuf", includeStderr: true });
         }
     );
@@ -147,5 +148,17 @@ describe("ffuf-mcp", () => {
         assert.ok(text.includes("admin"));
         assert.ok(text.includes("login"));
         await h.cleanup();
+    });
+
+    it("passes timeoutSeconds to spawn options", async () => {
+        await harness.connect();
+        await assertToolCallSucceeds(harness.client, "do-ffuf", {
+            url: "https://example.com/FUZZ",
+            ffuf_args: ["-w", "/tmp/wordlist.txt"],
+            timeoutSeconds: 60,
+        });
+        const opts = mock.lastCall()?.options;
+        assert.equal(opts?.timeoutMs, 60000);
+        await harness.cleanup();
     });
 });
