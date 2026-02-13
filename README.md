@@ -54,6 +54,7 @@ Since each MCP server may require different dependencies, the `start.sh` bash sc
 | Certificate Search (crt.sh) | Subdomain discovery tool using SSL certificate logs | [Certificate Search MCP Documentation](./servers/crtsh-mcp/) |
 | Commix | Command injection detection and exploitation tool | [Commix MCP Documentation](./servers/commix-mcp/) |
 | FFUF | Web content fuzzing tool for discovering hidden files and directories | [FFUF MCP Documentation](./servers/ffuf-mcp/) |
+| gau | Fetches known URLs from AlienVault OTX, Wayback Machine, Common Crawl, and URLScan | [gau MCP Documentation](./servers/gau-mcp/) |
 | GitHub Subdomains | Subdomain discovery tool that searches GitHub code using the GitHub API | [GitHub Subdomains MCP Documentation](./servers/github-subdomains-mcp/) |
 | Gobuster | URI, DNS, S3, GCS, and vhost brute-forcing tool | [Gobuster MCP Documentation](./servers/gobuster-mcp/) |
 | Gowitness | Web screenshot and reconnaissance tool for capturing and analyzing web pages | [Gowitness MCP Documentation](./servers/gowitness-mcp/) |
@@ -234,11 +235,9 @@ node servers/nmap-mcp/build/index.js nmap --transport http --port 3001
 - dalfox
 - dnsrecon
 - feroxbuster
-- gau
 - getJS
 - github-endpoints
 - gospider
-- hakrawler
 - kiterunner
 - medusa
 - naabu

@@ -76,7 +76,8 @@ All imports from `mcp-shared`: `{ secureSpawn, startServer, getToolArgs, formatT
 7. Create `README.md` with usage, setup, and 3-5 example prompts showing conversational invocation
 8. Add entry to root `README.md` tools table
 9. Add Docker infrastructure: entry in `docker-compose.yml`, service in `docker/services.json`, and ensure the tool's Dockerfile category covers it (see `docker/Dockerfile.*`)
-10. `npm install` at repo root to link workspace, then `npm -w <tool>-mcp run build && npm -w <tool>-mcp test`
+10. Add E2E test: add service to `ALL_SERVICES` in `test-e2e/src/helpers/health.ts`, then add a test case in the appropriate `test-e2e/src/tests/*.e2e.ts` file using `callTool` + `assertContains` pattern with `TARGETS` constants
+11. `npm install` at repo root to link workspace, then `npm -w <tool>-mcp run build && npm -w <tool>-mcp test`
 
 ## Testing
 

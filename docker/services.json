@@ -8,6 +8,7 @@
     {"name": "commix", "path": "/commix", "description": "Command injection detection and exploitation"},
     {"name": "crtsh", "path": "/crtsh", "description": "Certificate transparency log search"},
     {"name": "ffuf", "path": "/ffuf", "description": "Web content fuzzing"},
+    {"name": "gau", "path": "/gau", "description": "URL enumeration from Wayback Machine, Common Crawl, OTX, and URLScan"},
     {"name": "github-subdomains", "path": "/github-subdomains", "description": "GitHub-based subdomain discovery"},
     {"name": "gobuster", "path": "/gobuster", "description": "URI, DNS, S3, vhost brute-forcing"},
     {"name": "gowitness", "path": "/gowitness", "description": "Web screenshot and reconnaissance"},

@@ -151,6 +151,22 @@ services:
     networks: ["tools"]
     <<: [*restart, *resource-limits-heavy, *security]
 
+  gau:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.go
+      args:
+        SERVER_DIR: servers/gau-mcp
+        GO_PACKAGE: github.com/lc/gau/v2/cmd/gau
+        TOOL_BIN: gau
+    command: ["/usr/local/bin/gau", "--transport", "http", "--port", "3000"]
+    expose: ["3000"]
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/healthz"]
+    networks: ["tools"]
+    <<: [*restart, *resource-limits, *security]
+
   github-subdomains:
     build:
       context: .

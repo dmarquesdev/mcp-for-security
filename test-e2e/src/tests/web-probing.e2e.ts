@@ -31,6 +31,18 @@ describe("web probing", () => {
     });
   });
 
+  describe("gau", () => {
+    it(`fetches known URLs for ${TARGETS.NMAP_SCANME}`, { timeout: 120000 }, async (t) => {
+      const skip = await shouldSkip(TestCategory.PUBLIC);
+      if (skip) { t.skip(skip); return; }
+      if (!(await isServiceHealthy("gau"))) { t.skip("gau not healthy"); return; }
+      const result = await callTool("gau", "do-gau", {
+        targets: [TARGETS.NMAP_SCANME],
+      }, { requestTimeout: 120000 });
+      assertContains(result, TARGETS.NMAP_SCANME);
+    });
+  });
+
   describe("waybackurls", () => {
     it(`finds archived URLs for ${TARGETS.NMAP_SCANME}`, { timeout: 120000 }, async (t) => {
       const skip = await shouldSkip(TestCategory.PUBLIC);
