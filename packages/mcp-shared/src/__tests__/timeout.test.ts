@@ -52,4 +52,14 @@ describe("buildSpawnOptions", () => {
         const opts = buildSpawnOptions({ signal: fakeSignal });
         assert.equal(opts.timeoutMs, undefined);
     });
+
+    it("passes stdinData through when provided", () => {
+        const opts = buildSpawnOptions({ signal: fakeSignal }, { stdinData: "hello\n" });
+        assert.equal(opts.stdinData, "hello\n");
+    });
+
+    it("omits stdinData when not provided", () => {
+        const opts = buildSpawnOptions({ signal: fakeSignal }, { timeoutSeconds: 60 });
+        assert.equal(opts.stdinData, undefined);
+    });
 });

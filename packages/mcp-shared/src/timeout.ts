@@ -26,10 +26,14 @@ export const TIMEOUT_SCHEMA = {
  */
 export function buildSpawnOptions(
     extra: { signal: AbortSignal },
-    opts?: { timeoutSeconds?: number; defaultTimeoutMs?: number }
+    opts?: { timeoutSeconds?: number; defaultTimeoutMs?: number; stdinData?: string }
 ): SpawnOptions {
     const timeoutMs = opts?.timeoutSeconds
         ? opts.timeoutSeconds * 1000
         : opts?.defaultTimeoutMs;
-    return { ...(timeoutMs !== undefined && { timeoutMs }), signal: extra.signal };
+    return {
+        ...(timeoutMs !== undefined && { timeoutMs }),
+        ...(opts?.stdinData !== undefined && { stdinData: opts.stdinData }),
+        signal: extra.signal,
+    };
 }

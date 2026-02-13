@@ -58,7 +58,7 @@ services:
     <<: *restart
 
   # ═══════════════════════════════════════════
-  # Go Tools (15)
+  # Go Tools (16)
   # ═══════════════════════════════════════════
 
   alterx:
@@ -197,6 +197,22 @@ services:
         GO_PACKAGE: github.com/sensepost/gowitness
         TOOL_BIN: gowitness
     command: ["/usr/local/bin/gowitness", "--transport", "http", "--port", "3000"]
+    expose: ["3000"]
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/healthz"]
+    networks: ["tools"]
+    <<: [*restart, *resource-limits, *security]
+
+  hakrawler:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.go
+      args:
+        SERVER_DIR: servers/hakrawler-mcp
+        GO_PACKAGE: github.com/hakluke/hakrawler
+        TOOL_BIN: hakrawler
+    command: ["/usr/local/bin/hakrawler", "--transport", "http", "--port", "3000"]
     expose: ["3000"]
     healthcheck:
       <<: *healthcheck

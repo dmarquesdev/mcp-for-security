@@ -11,6 +11,7 @@
     {"name": "github-subdomains", "path": "/github-subdomains", "description": "GitHub-based subdomain discovery"},
     {"name": "gobuster", "path": "/gobuster", "description": "URI, DNS, S3, vhost brute-forcing"},
     {"name": "gowitness", "path": "/gowitness", "description": "Web screenshot and reconnaissance"},
+    {"name": "hakrawler", "path": "/hakrawler", "description": "Web crawler for endpoint and link discovery"},
     {"name": "http-headers-security", "path": "/http-headers-security", "description": "HTTP security header analysis"},
     {"name": "httpx", "path": "/httpx", "description": "Fast HTTP probing toolkit"},
     {"name": "katana", "path": "/katana", "description": "Fast web crawler with JS parsing"},

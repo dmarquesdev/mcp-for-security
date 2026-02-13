@@ -117,4 +117,35 @@ describe("secureSpawn", () => {
             /timed out/
         );
     });
+
+    it("writes stdinData to child process stdin", async () => {
+        const result = await secureSpawn(
+            "node",
+            ["-e", "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>process.stdout.write(d))"],
+            { stdinData: "hello from stdin" }
+        );
+        assert.equal(result.exitCode, 0);
+        assert.equal(result.stdout, "hello from stdin");
+    });
+
+    it("writes multiline stdinData (newline-delimited)", async () => {
+        const result = await secureSpawn(
+            "node",
+            ["-e", "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>process.stdout.write(d))"],
+            { stdinData: "https://a.com\nhttps://b.com\n" }
+        );
+        assert.equal(result.exitCode, 0);
+        assert.equal(result.stdout, "https://a.com\nhttps://b.com\n");
+    });
+
+    it("stdinData still respects timeout", async () => {
+        await assert.rejects(
+            () =>
+                secureSpawn("sleep", ["10"], {
+                    stdinData: "data",
+                    timeoutMs: 100,
+                }),
+            /timed out/
+        );
+    });
 });

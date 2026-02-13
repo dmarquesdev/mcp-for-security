@@ -9,6 +9,7 @@ export interface SpawnOptions {
     cwd?: string;
     env?: NodeJS.ProcessEnv;
     signal?: AbortSignal;
+    stdinData?: string;
 }
 
 export interface SpawnResult {
@@ -31,8 +32,9 @@ export function secureSpawn(
             return;
         }
 
+        const stdinMode = options?.stdinData !== undefined ? "pipe" as const : "ignore" as const;
         const proc = spawn(binary, args, {
-            stdio: ["ignore", "pipe", "pipe"],
+            stdio: [stdinMode, "pipe", "pipe"],
             cwd: options?.cwd ?? process.cwd(),
             env: options?.env ?? process.env,
         });
@@ -68,7 +70,7 @@ export function secureSpawn(
             }
         };
 
-        proc.stdout.on("data", (data: Buffer) => {
+        proc.stdout!.on("data", (data: Buffer) => {
             stdoutBytes += data.length;
             if (stdoutBytes + stderrBytes > maxOutputBytes) {
                 if (!killed) {
@@ -87,7 +89,7 @@ export function secureSpawn(
             stdout += data.toString();
         });
 
-        proc.stderr.on("data", (data: Buffer) => {
+        proc.stderr!.on("data", (data: Buffer) => {
             stderrBytes += data.length;
             if (stdoutBytes + stderrBytes > maxOutputBytes) {
                 if (!killed) {
@@ -123,5 +125,11 @@ export function secureSpawn(
             cleanup();
             reject(new Error(`Failed to start process: ${error.message}`));
         });
+
+        if (options?.stdinData !== undefined && proc.stdin) {
+            proc.stdin.on("error", () => { /* suppress write errors if process exits early */ });
+            proc.stdin.write(options.stdinData);
+            proc.stdin.end();
+        }
     });
 }
