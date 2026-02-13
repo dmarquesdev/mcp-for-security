@@ -505,7 +505,7 @@ services:
     <<: [*restart, *resource-limits, *security]
 
   # ═══════════════════════════════════════════
-  # API-Only Tools (3)
+  # API-Only Tools (4)
   # ═══════════════════════════════════════════
 
   crtsh:
@@ -547,6 +547,22 @@ services:
     environment:
       - MOBSF_API_KEY=${MOBSF_API_KEY:-}
       - MOBSF_URL=${MOBSF_URL:-}
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/healthz"]
+    networks: ["tools"]
+    <<: [*restart, *resource-limits, *security]
+
+  shodan:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+      args:
+        SERVER_DIR: servers/shodan-mcp
+    command: ["--transport", "http", "--port", "3000"]
+    expose: ["3000"]
+    environment:
+      - SHODAN_API_KEY=${SHODAN_API_KEY:-}
     healthcheck:
       <<: *healthcheck
       test: ["CMD", "curl", "-sf", "http://localhost:3000/healthz"]

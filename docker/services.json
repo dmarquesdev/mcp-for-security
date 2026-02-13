@@ -20,6 +20,7 @@
     {"name": "nuclei", "path": "/nuclei", "description": "Template-based vulnerability scanner"},
     {"name": "scoutsuite", "path": "/scoutsuite", "description": "Cloud security auditing"},
     {"name": "seclists", "path": "/seclists", "description": "Security wordlist collection"},
+    {"name": "shodan", "path": "/shodan", "description": "Shodan search engine API for security reconnaissance"},
     {"name": "shuffledns", "path": "/shuffledns", "description": "DNS brute-forcing and resolution"},
     {"name": "smuggler", "path": "/smuggler", "description": "HTTP request smuggling detection"},
     {"name": "sqlmap", "path": "/sqlmap", "description": "SQL injection detection and exploitation"},

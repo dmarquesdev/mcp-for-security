@@ -9,7 +9,7 @@
 
 ## 🚀 Project Overview
 
-**MCP for Security** repository contains 28 Model Context Protocol (MCP) server implementations for various security testing tools, making them accessible through a standardized interface. All servers live in `servers/` and share a common utility library (`packages/mcp-shared/`). The repo uses npm workspaces and supports both stdio and HTTP transport.
+**MCP for Security** repository contains 29 Model Context Protocol (MCP) server implementations for various security testing tools, making them accessible through a standardized interface. All servers live in `servers/` and share a common utility library (`packages/mcp-shared/`). The repo uses npm workspaces and supports both stdio and HTTP transport.
 
 ---
 
@@ -17,7 +17,7 @@
 
 ### Docker (Recommended)
 
-Run all 28 MCP servers behind a single Nginx gateway using Docker Compose:
+Run all 29 MCP servers behind a single Nginx gateway using Docker Compose:
 
 ```bash
 docker compose up                             # Start gateway + all servers
@@ -65,6 +65,7 @@ Since each MCP server may require different dependencies, the `start.sh` bash sc
 | Nmap | Comprehensive network scanning tool for service and vulnerability discovery | [Nmap MCP Documentation](./servers/nmap-mcp/) |
 | Nuclei | Vulnerability scanner using custom templates | [Nuclei MCP Documentation](./servers/nuclei-mcp/) |
 | Scout Suite | Cloud security auditing tool for assessing configurations across multiple services | [Scout Suite MCP Documentation](./servers/scoutsuite-mcp/) |
+| Shodan | Shodan search engine API for security reconnaissance | [Shodan MCP Documentation](./servers/shodan-mcp/) |
 | SecLists | Security tester's wordlist collection — browse, search, and retrieve wordlists for use with other tools | [SecLists MCP Documentation](./servers/seclists-mcp/) |
 | shuffledns | High-speed and customizable DNS brute-forcing and resolution tool | [shuffledns MCP Documentation](./servers/shuffledns-mcp/) |
 | Smuggler | Advanced tool for detecting HTTP Request Smuggling vulnerabilities | [Smuggler MCP Documentation](./servers/smuggler-mcp/) |

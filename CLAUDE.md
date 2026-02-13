@@ -298,6 +298,7 @@ Every server in `src/index.ts`:
 - **Environment config:** Servers auto-load `.env` via `loadenv.ts` (side-effect import in `mcp-shared`). Set `MCP_ENV_FILE` to specify an explicit path (useful when CWD differs from repo root). See `.env.example` for all supported variables.
 - **Docker retry loops:** The `for i in 1 2 3 4 5; do ... && break || sleep 15; done` pattern in Dockerfiles is intentional for CI/CD resilience against transient npm/Go registry failures. Do not replace with single-attempt installs.
 - **Docker build ordering:** Always build the shared-builder image first: `./scripts/docker-build.sh` handles this automatically. The `mcp-shared-builder:latest` image is referenced by all tool Dockerfiles.
+- **E2E test targets:** Never hardcode domains, IPs, or URLs in E2E tests. Import `TARGETS` from `test-e2e/src/helpers/targets.ts` and use named constants (e.g., `TARGETS.EXAMPLE`, `TARGETS.NMAP_SCANME`, `TARGETS.CLOUDFLARE_IP`). All targets are overridable via `E2E_TARGET_*` env vars. For wordlists, use `WORDLISTS` from the same module.
 
 ## Adding a New MCP Server
 
