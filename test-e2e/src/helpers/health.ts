@@ -91,7 +91,7 @@ export async function waitForTarget(
   return false;
 }
 
-/** All 30 service names matching docker-compose service names */
+/** All 31 service names matching docker-compose service names */
 export const ALL_SERVICES = [
   "alterx",
   "arjun",
@@ -109,6 +109,7 @@ export const ALL_SERVICES = [
   "httpx",
   "katana",
   "masscan",
+  "naabu",
   "mobsf",
   "nmap",
   "nuclei",

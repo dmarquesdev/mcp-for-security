@@ -19,6 +19,20 @@ describe("network scanners", () => {
     });
   });
 
+  describe("naabu", () => {
+    it(`scans ${TARGETS.NMAP_SCANME} for top ports`, { timeout: 90000 }, async (t) => {
+      const skip = await shouldSkip(TestCategory.PUBLIC);
+      if (skip) { t.skip(skip); return; }
+      if (!(await isServiceHealthy("naabu"))) { t.skip("naabu not healthy"); return; }
+      const result = await callTool("naabu", "do-naabu", {
+        host: TARGETS.NMAP_SCANME,
+        top_ports: 100,
+        scan_type: "c",
+      });
+      assertContains(result, TARGETS.NMAP_SCANME);
+    });
+  });
+
   describe("masscan", () => {
     it("skipped — requires privileged mode", { timeout: 5000 }, async (t) => {
       const skip = await shouldSkip(TestCategory.PRIVILEGED);

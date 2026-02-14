@@ -17,6 +17,7 @@
     {"name": "httpx", "path": "/httpx", "description": "Fast HTTP probing toolkit"},
     {"name": "katana", "path": "/katana", "description": "Fast web crawler with JS parsing"},
     {"name": "masscan", "path": "/masscan", "description": "Fast port scanner"},
+    {"name": "naabu", "path": "/naabu", "description": "Fast port scanning for network reconnaissance"},
     {"name": "mobsf", "path": "/mobsf", "description": "Mobile security framework API"},
     {"name": "nmap", "path": "/nmap", "description": "Network scanning and service discovery"},
     {"name": "nuclei", "path": "/nuclei", "description": "Template-based vulnerability scanner"},

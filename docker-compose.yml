@@ -58,7 +58,7 @@ services:
     <<: *restart
 
   # ═══════════════════════════════════════════
-  # Go Tools (16)
+  # Go Tools (17)
   # ═══════════════════════════════════════════
 
   alterx:
@@ -262,6 +262,22 @@ services:
         TOOL_BIN: katana
     command: ["/usr/local/bin/katana", "--transport", "http", "--port", "3000"]
     expose: ["3000"]
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/healthz"]
+    networks: ["tools"]
+    <<: [*restart, *resource-limits, *security]
+
+  naabu:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.naabu
+      args:
+        SERVER_DIR: servers/naabu-mcp
+    command: ["/usr/local/bin/naabu", "--transport", "http", "--port", "3000"]
+    expose: ["3000"]
+    cap_drop: ["ALL"]
+    cap_add: ["NET_RAW"]
     healthcheck:
       <<: *healthcheck
       test: ["CMD", "curl", "-sf", "http://localhost:3000/healthz"]

@@ -9,7 +9,7 @@
 
 ## 🚀 Project Overview
 
-**MCP for Security** repository contains 29 Model Context Protocol (MCP) server implementations for various security testing tools, making them accessible through a standardized interface. All servers live in `servers/` and share a common utility library (`packages/mcp-shared/`). The repo uses npm workspaces and supports both stdio and HTTP transport.
+**MCP for Security** repository contains 30 Model Context Protocol (MCP) server implementations for various security testing tools, making them accessible through a standardized interface. All servers live in `servers/` and share a common utility library (`packages/mcp-shared/`). The repo uses npm workspaces and supports both stdio and HTTP transport.
 
 ---
 
@@ -17,7 +17,7 @@
 
 ### Docker (Recommended)
 
-Run all 29 MCP servers behind a single Nginx gateway using Docker Compose:
+Run all 30 MCP servers behind a single Nginx gateway using Docker Compose:
 
 ```bash
 docker compose up                             # Start gateway + all servers
@@ -62,6 +62,7 @@ Since each MCP server may require different dependencies, the `start.sh` bash sc
 | httpx | Fast and multi-purpose HTTP toolkit for port scanning | [httpx MCP Documentation](./servers/httpx-mcp/) |
 | Katana | Fast and flexible web crawler with JS parsing and hybrid crawling support | [Katana MCP Documentation](./servers/katana-mcp/) |
 | Masscan | Fast port scanner for large-scale network discovery | [Masscan MCP Documentation](./servers/masscan-mcp/) |
+| Naabu | Fast port scanner with SYN/CONNECT probes, service detection, and CDN awareness | [Naabu MCP Documentation](./servers/naabu-mcp/) |
 | MobSF | Mobile security framework for analyzing mobile applications | [MobSF MCP Documentation](./servers/mobsf-mcp/) |
 | Nmap | Comprehensive network scanning tool for service and vulnerability discovery | [Nmap MCP Documentation](./servers/nmap-mcp/) |
 | Nuclei | Vulnerability scanner using custom templates | [Nuclei MCP Documentation](./servers/nuclei-mcp/) |
@@ -118,10 +119,13 @@ Performs high-speed probing of discovered subdomains to validate alive hosts, fe
 ### Katana MCP 
 Performs fast and customizable web crawling to discover endpoints, scripts, and hidden paths. Supports JavaScript parsing, depth control, and hybrid crawling with headless browsers to enrich reconnaissance and automation workflows.
 
-### Masscan MCP Server  
+### Masscan MCP Server
 Fast port scanning tool for target-based port discovery across networks.
 
-### MobSF MCP Server  
+### Naabu MCP Server
+Fast port scanner by ProjectDiscovery with SYN and CONNECT scan types, configurable rate limiting, service version detection, and CDN-aware scanning.
+
+### MobSF MCP Server
 Mobile application security testing framework for Android, iOS, and Windows applications.
 
 ### Nmap MCP Server  
@@ -240,7 +244,6 @@ node servers/nmap-mcp/build/index.js nmap --transport http --port 3001
 - gospider
 - kiterunner
 - medusa
-- naabu
 - ParamSpider
 - puredns
 - s3scanner
