@@ -30,6 +30,7 @@
     {"name": "sslscan", "path": "/sslscan", "description": "SSL/TLS configuration analysis"},
     {"name": "subfinder", "path": "/subfinder", "description": "Passive subdomain enumeration"},
     {"name": "testssl", "path": "/testssl", "description": "TLS/SSL protocol and cipher testing"},
+    {"name": "urldedupe", "path": "/urldedupe", "description": "URL deduplication and filtering"},
     {"name": "waybackurls", "path": "/waybackurls", "description": "Wayback Machine URL retrieval"},
     {"name": "wpscan", "path": "/wpscan", "description": "WordPress vulnerability scanning"}
   ],

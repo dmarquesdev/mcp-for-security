@@ -54,4 +54,23 @@ describe("web probing", () => {
       assertContains(result, TARGETS.NMAP_SCANME);
     });
   });
+
+  describe("urldedupe", () => {
+    it("deduplicates sample URLs", { timeout: 60000 }, async (t) => {
+      const skip = await shouldSkip(TestCategory.PUBLIC);
+      if (skip) { t.skip(skip); return; }
+      if (!(await isServiceHealthy("urldedupe"))) { t.skip("urldedupe not healthy"); return; }
+      const urls = [
+        `${TARGETS.EXAMPLE_HTTPS}/page?id=1`,
+        `${TARGETS.EXAMPLE_HTTPS}/page?id=2`,
+        `${TARGETS.EXAMPLE_HTTPS}/other?id=1`,
+        `${TARGETS.EXAMPLE_HTTPS}/page?id=3`,
+      ];
+      const result = await callTool("urldedupe", "do-urldedupe", {
+        urls,
+        similar: true,
+      });
+      assertContains(result, TARGETS.EXAMPLE);
+    });
+  });
 });

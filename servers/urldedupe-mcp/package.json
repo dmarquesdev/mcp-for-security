@@ -1,0 +1,23 @@
+{
+  "name": "urldedupe-mcp",
+  "version": "1.0.0",
+  "description": "urldedupe URL deduplication MCP server",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc",
+    "test": "node --test 'build/__tests__/*.test.js'"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.17.2",
+    "mcp-shared": "*",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.13",
+    "test-helpers": "*",
+    "typescript": "^5.8.3"
+  }
+}

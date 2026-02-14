@@ -91,7 +91,7 @@ export async function waitForTarget(
   return false;
 }
 
-/** All 31 service names matching docker-compose service names */
+/** All 32 service names matching docker-compose service names */
 export const ALL_SERVICES = [
   "alterx",
   "arjun",
@@ -122,6 +122,7 @@ export const ALL_SERVICES = [
   "sslscan",
   "subfinder",
   "testssl",
+  "urldedupe",
   "waybackurls",
   "wpscan",
 ] as const;

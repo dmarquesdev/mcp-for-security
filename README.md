@@ -75,6 +75,7 @@ Since each MCP server may require different dependencies, the `start.sh` bash sc
 | SSLScan | SSL/TLS configuration analyzer for security assessment | [SSLScan MCP Documentation](./servers/sslscan-mcp/) |
 | Subfinder | Fast passive subdomain enumeration tool for discovering valid subdomains | [Subfinder MCP Documentation](./servers/subfinder-mcp/) |
 | testssl.sh | Comprehensive TLS/SSL testing tool for protocols, ciphers, vulnerabilities, and certificates | [testssl MCP Documentation](./servers/testssl-mcp/) |
+| urldedupe | URL deduplication tool for removing redundant URL and query parameter combinations | [urldedupe MCP Documentation](./servers/urldedupe-mcp/) |
 | Waybackurls | Tool for retrieving historical URLs from the Wayback Machine | [Waybackurls MCP Documentation](./servers/waybackurls-mcp/) |
 | WPScan | WordPress vulnerability scanner for detecting plugins, themes, and configuration issues | [WPScan MCP Documentation](./servers/wpscan-mcp/) |
 
@@ -157,6 +158,9 @@ Comprehensive TLS/SSL testing tool that checks protocols (SSLv2–TLS 1.3), ciph
 
 ### SecLists MCP
 Provides access to the SecLists wordlist collection — browse categories, search for wordlists by name, retrieve file paths for use with tools like ffuf and gobuster, and read wordlist contents directly.
+
+### urldedupe MCP
+URL deduplication tool that removes redundant URL and query parameter combinations. Accepts URLs via stdin, supports regex parsing, similar URL filtering, query-string-only mode, and extension filtering.
 
 ### Waybackurls MCP
 Retrieves historical URLs from the Wayback Machine to discover forgotten endpoints.

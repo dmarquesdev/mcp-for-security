@@ -537,6 +537,22 @@ services:
     <<: [*restart, *resource-limits, *security]
 
   # ═══════════════════════════════════════════
+  # C++ Tools (1)
+  # ═══════════════════════════════════════════
+
+  urldedupe:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.urldedupe
+    command: ["/usr/local/bin/urldedupe", "--transport", "http", "--port", "3000"]
+    expose: ["3000"]
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/healthz"]
+    networks: ["tools"]
+    <<: [*restart, *resource-limits, *security]
+
+  # ═══════════════════════════════════════════
   # SecLists (1)
   # ═══════════════════════════════════════════
 
