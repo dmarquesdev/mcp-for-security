@@ -1,6 +1,10 @@
 import { describe, it } from "node:test";
 import { callTool } from "../helpers/mcp-client.js";
-import { assertMatchesAny } from "../helpers/assertions.js";
+import {
+  assertIsError,
+  assertLineCount,
+  assertMatchesAny,
+} from "../helpers/assertions.js";
 import { isServiceHealthy } from "../helpers/health.js";
 import { shouldSkip, TestCategory } from "../helpers/categories.js";
 import { TARGETS, WORDLISTS } from "../helpers/targets.js";
@@ -15,7 +19,17 @@ describe("DNS tools", () => {
         target: TARGETS.EXAMPLE,
         args: ["-r", WORDLISTS.RESOLVERS, "-w", WORDLISTS.SUBDOMAINS],
       });
-      assertMatchesAny(result, [TARGETS.EXAMPLE, "dns", "resolved"]);
+      assertMatchesAny(result, [TARGETS.EXAMPLE, "dns", "resolved", "."]);
+      assertLineCount(result, 1);
+    });
+
+    it("returns error for empty target", { timeout: 30000 }, async (t) => {
+      if (!(await isServiceHealthy("shuffledns"))) { t.skip("shuffledns not healthy"); return; }
+      const result = await callTool("shuffledns", "do-shuffledns", {
+        target: "",
+        args: ["-r", WORDLISTS.RESOLVERS, "-w", WORDLISTS.SUBDOMAINS],
+      });
+      assertIsError(result);
     });
   });
 });

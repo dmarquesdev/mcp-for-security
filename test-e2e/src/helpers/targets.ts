@@ -9,6 +9,8 @@ const wl = (key: string, fallback: string): string =>
 // Base values used to derive HTTPS/TLS/sub-path variants
 const example = env("EXAMPLE", "google.com");
 const httpbin = env("HTTPBIN", "http://httpbin/");
+const scanTarget = env("SCAN_TARGET", "scan-target");
+const tlsTarget = env("TLS_TARGET", "tls-target");
 
 /** Public targets that consent to scanning — override via E2E_TARGET_* env vars */
 export const TARGETS = {
@@ -34,6 +36,14 @@ export const TARGETS = {
   CLOUDFLARE_DOMAIN: env("CLOUDFLARE_DOMAIN", "cloudflare.com"),
   /** Cloudflare org name for ASN mapping tests */
   CLOUDFLARE_ORG: env("CLOUDFLARE_ORG", "CLOUDFLARE"),
+  /** Multi-port scan target (Docker e2e — ports 22,80,443,3306,8080) */
+  SCAN_TARGET: scanTarget,
+  /** Self-signed TLS target (Docker e2e — CN=tls-target.local) */
+  TLS_TARGET: tlsTarget,
+  /** TLS target HTTPS URL */
+  TLS_TARGET_HTTPS: env("TLS_TARGET_HTTPS", `https://${tlsTarget}/`),
+  /** TLS target host:port for SSL tools */
+  TLS_TARGET_HOST: env("TLS_TARGET_HOST", `${tlsTarget}:443`),
   /** Local httpbin for fuzzer/injection tests */
   HTTPBIN: httpbin,
   /** httpbin /get endpoint (derived from HTTPBIN unless overridden) */

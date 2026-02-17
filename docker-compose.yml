@@ -665,6 +665,34 @@ services:
   # E2E Test Targets
   # ═══════════════════════════════════════════
 
+  scan-target:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.scan-target
+    ports: ["${SCAN_TARGET_PORT:-8084}:80"]
+    profiles: ["e2e"]
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "nc", "-z", "localhost", "80"]
+    networks:
+      - tools
+      - e2e-targets
+    <<: *restart
+
+  tls-target:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.tls-target
+    ports: ["${TLS_TARGET_PORT:-8085}:443"]
+    profiles: ["e2e"]
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "curl", "-sf", "-k", "https://localhost:443/"]
+    networks:
+      - tools
+      - e2e-targets
+    <<: *restart
+
   httpbin:
     image: kennethreitz/httpbin:latest
     ports: ["${HTTPBIN_PORT:-8081}:80"]

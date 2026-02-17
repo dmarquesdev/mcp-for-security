@@ -5,6 +5,10 @@ export enum TestCategory {
   PUBLIC = "PUBLIC",
   /** Tools that need local httpbin — run if httpbin is up */
   LOCAL = "LOCAL",
+  /** Tools that need scan-target container (multi-port listener) */
+  LOCAL_SCAN = "LOCAL_SCAN",
+  /** Tools that need tls-target container (self-signed TLS) */
+  LOCAL_TLS = "LOCAL_TLS",
   /** Tools that need no external target */
   SELF_CONTAINED = "SELF_CONTAINED",
   /** Tools that need API keys / credentials */
@@ -25,6 +29,12 @@ export async function shouldSkip(category: TestCategory): Promise<string | false
 
     case TestCategory.LOCAL:
       return (await isTargetReachable("httpbin")) ? false : "httpbin not available";
+
+    case TestCategory.LOCAL_SCAN:
+      return (await isTargetReachable("scan-target")) ? false : "scan-target not available";
+
+    case TestCategory.LOCAL_TLS:
+      return (await isTargetReachable("tls-target")) ? false : "tls-target not available";
 
     case TestCategory.CREDENTIAL:
       return false; // individual tests check their own env vars

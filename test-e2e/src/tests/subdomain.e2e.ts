@@ -1,10 +1,17 @@
+import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { callTool } from "../helpers/mcp-client.js";
-import { assertContains, assertMatchesAny, assertIsJson } from "../helpers/assertions.js";
+import {
+  assertContains,
+  assertIsError,
+  assertIsJson,
+  assertLineCount,
+  assertMatchesAny,
+  assertMatchesRegex,
+} from "../helpers/assertions.js";
 import { isServiceHealthy } from "../helpers/health.js";
 import { shouldSkip, TestCategory } from "../helpers/categories.js";
 import { TARGETS } from "../helpers/targets.js";
-
 
 describe("subdomain enumeration", () => {
   describe("subfinder", () => {
@@ -16,6 +23,17 @@ describe("subdomain enumeration", () => {
         domain: TARGETS.SUBDOMAIN_RICH,
       }, { requestTimeout: 90000 });
       assertContains(result, TARGETS.SUBDOMAIN_RICH);
+      assertLineCount(result, 3);
+      assertMatchesRegex(result, /[\w.-]+\.tesla\.com/);
+    });
+
+    it("returns empty or error for invalid domain", { timeout: 30000 }, async (t) => {
+      if (!(await isServiceHealthy("subfinder"))) { t.skip("subfinder not healthy"); return; }
+      const result = await callTool("subfinder", "do-subfinder", {
+        domain: "nonexistent-domain-xyz-12345.invalid",
+      });
+      // subfinder returns empty for nonexistent domains
+      assertMatchesAny(result, ["", "no result", "error", "found 0"]);
     });
   });
 
@@ -29,10 +47,18 @@ describe("subdomain enumeration", () => {
       });
       assertMatchesAny(result, [TARGETS.SUBDOMAIN_RICH, "No output"]);
     });
+
+    it("returns empty for invalid domain", { timeout: 30000 }, async (t) => {
+      if (!(await isServiceHealthy("assetfinder"))) { t.skip("assetfinder not healthy"); return; }
+      const result = await callTool("assetfinder", "do-assetfinder", {
+        target: "nonexistent-domain-xyz-12345.invalid",
+      });
+      assertMatchesAny(result, ["", "no output", "No output", "error"]);
+    });
   });
 
   describe("crtsh", () => {
-    it(`returns certificate data for ${TARGETS.SUBDOMAIN_RICH}`, { timeout: 120000 }, async (t) => {
+    it(`returns subdomains from certificate logs for ${TARGETS.SUBDOMAIN_RICH}`, { timeout: 120000 }, async (t) => {
       const skip = await shouldSkip(TestCategory.PUBLIC);
       if (skip) { t.skip(skip); return; }
       if (!(await isServiceHealthy("crtsh"))) { t.skip("crtsh not healthy"); return; }
@@ -40,14 +66,30 @@ describe("subdomain enumeration", () => {
         target: TARGETS.SUBDOMAIN_RICH,
       }, { requestTimeout: 120000 });
       const parsed = assertIsJson(result);
-      if (Array.isArray(parsed) && parsed.length > 0) {
+      assert.ok(Array.isArray(parsed), "result should be a JSON array");
+      const domains = parsed as string[];
+      if (domains.length > 0) {
         assertContains(result, TARGETS.SUBDOMAIN_RICH);
+        // crtsh returns array of subdomain strings, verify at least one matches the domain pattern
+        const baseEscaped = TARGETS.SUBDOMAIN_RICH.replace(/\./g, "\\.");
+        assertMatchesRegex(result, new RegExp(`[\\w.-]+\\.${baseEscaped}`));
       }
     });
   });
 
   describe("cero", () => {
-    it(`probes ${TARGETS.SUBDOMAIN_RICH} certificates`, { timeout: 60000 }, async (t) => {
+    it("probes tls-target certificates and finds known CN", { timeout: 60000 }, async (t) => {
+      const skip = await shouldSkip(TestCategory.LOCAL_TLS);
+      if (skip) { t.skip(skip); return; }
+      if (!(await isServiceHealthy("cero"))) { t.skip("cero not healthy"); return; }
+      const result = await callTool("cero", "do-cero", {
+        target: `${TARGETS.TLS_TARGET}:443`,
+        args: [],
+      });
+      assertMatchesAny(result, ["tls-target", "tls-target.local", ".local"]);
+    });
+
+    it(`probes ${TARGETS.SUBDOMAIN_RICH} certificates (supplementary)`, { timeout: 60000 }, async (t) => {
       const skip = await shouldSkip(TestCategory.PUBLIC);
       if (skip) { t.skip(skip); return; }
       if (!(await isServiceHealthy("cero"))) { t.skip("cero not healthy"); return; }

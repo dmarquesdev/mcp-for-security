@@ -1,6 +1,10 @@
 import { describe, it } from "node:test";
 import { callTool } from "../helpers/mcp-client.js";
-import { assertContains, assertMatchesAny } from "../helpers/assertions.js";
+import {
+  assertContains,
+  assertMatchesAny,
+  assertMatchesRegex,
+} from "../helpers/assertions.js";
 import { isServiceHealthy } from "../helpers/health.js";
 import { shouldSkip, TestCategory } from "../helpers/categories.js";
 import { TARGETS } from "../helpers/targets.js";
@@ -16,6 +20,7 @@ describe("ASN mapping", () => {
         asn: TARGETS.CLOUDFLARE_ASN,
       });
       assertContains(result, "/");
+      assertMatchesRegex(result, /\d+\.\d+\.\d+\.\d+\/\d+/);
     });
 
     it(`resolves ${TARGETS.CLOUDFLARE_IP} to ASN info`, { timeout: 60000 }, async (t) => {
@@ -27,6 +32,7 @@ describe("ASN mapping", () => {
         ip: TARGETS.CLOUDFLARE_IP,
       });
       assertMatchesAny(result, ["/", "1.1.1"]);
+      assertMatchesRegex(result, /\d+\.\d+\.\d+\.\d+/);
     });
 
     it(`resolves ${TARGETS.CLOUDFLARE_DOMAIN} to network ranges`, { timeout: 60000 }, async (t) => {
@@ -38,6 +44,7 @@ describe("ASN mapping", () => {
         domain: TARGETS.CLOUDFLARE_DOMAIN,
       });
       assertContains(result, "/");
+      assertMatchesRegex(result, /\d+\.\d+\.\d+\.\d+\/\d+/);
     });
 
     it(`resolves ${TARGETS.CLOUDFLARE_ORG} org name`, { timeout: 60000 }, async (t) => {

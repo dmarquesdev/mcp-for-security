@@ -56,6 +56,8 @@ const TARGET_PORTS: Record<string, number> = {
   httpbin: Number(process.env.HTTPBIN_PORT || 8081),
   dvwa: Number(process.env.DVWA_PORT || 8082),
   wordpress: Number(process.env.WORDPRESS_PORT || 8083),
+  "scan-target": Number(process.env.SCAN_TARGET_PORT || 8084),
+  "tls-target": Number(process.env.TLS_TARGET_PORT || 8085),
 };
 
 const targetCache: Record<string, boolean> = {};
@@ -69,7 +71,8 @@ export async function isTargetReachable(target: string): Promise<boolean> {
     const resp = await fetch(`http://localhost:${port}/`, {
       signal: AbortSignal.timeout(5000),
     });
-    targetCache[target] = resp.status < 500;
+    // Any response (even 4xx from TLS targets getting plain HTTP) means it's up
+    targetCache[target] = true;
   } catch {
     targetCache[target] = false;
   }
@@ -105,6 +108,7 @@ export const ALL_SERVICES = [
   "github-subdomains",
   "gobuster",
   "gowitness",
+  "hakrawler",
   "http-headers-security",
   "httpx",
   "katana",

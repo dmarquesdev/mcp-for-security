@@ -1,0 +1,13 @@
+FROM alpine:3.19
+
+RUN apk add --no-cache socat curl
+
+COPY docker/scan-target-entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+EXPOSE 22 80 443 3306 8080
+
+HEALTHCHECK --interval=10s --timeout=3s --retries=3 \
+  CMD nc -z localhost 80 || exit 1
+
+ENTRYPOINT ["/entrypoint.sh"]
