@@ -53,6 +53,7 @@ Since each MCP server may require different dependencies, the `start.sh` bash sc
 | Cero | Certificate-based subdomain enumeration tool leveraging TLS handshakes to extract domain names from certificate fields like SAN | [Cero MCP Documentation](./servers/cero-mcp/) |
 | Certificate Search (crt.sh) | Subdomain discovery tool using SSL certificate logs | [Certificate Search MCP Documentation](./servers/crtsh-mcp/) |
 | Commix | Command injection detection and exploitation tool | [Commix MCP Documentation](./servers/commix-mcp/) |
+| Dalfox | Fast XSS vulnerability scanner with parameter analysis and payload testing | [Dalfox MCP Documentation](./servers/dalfox-mcp/) |
 | FFUF | Web content fuzzing tool for discovering hidden files and directories | [FFUF MCP Documentation](./servers/ffuf-mcp/) |
 | gau | Fetches known URLs from AlienVault OTX, Wayback Machine, Common Crawl, and URLScan | [gau MCP Documentation](./servers/gau-mcp/) |
 | GitHub Subdomains | Subdomain discovery tool that searches GitHub code using the GitHub API | [GitHub Subdomains MCP Documentation](./servers/github-subdomains-mcp/) |

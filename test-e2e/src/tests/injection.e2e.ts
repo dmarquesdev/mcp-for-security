@@ -33,6 +33,27 @@ describe("injection testing tools", () => {
     });
   });
 
+  describe("dalfox", () => {
+    it("scans DVWA for XSS vulnerabilities", { timeout: 120000 }, async (t) => {
+      const skip = await shouldSkip(TestCategory.VULN_DVWA);
+      if (skip) { t.skip(skip); return; }
+      if (!(await isServiceHealthy("dalfox"))) { t.skip("dalfox not healthy"); return; }
+      await ensureDvwaSetup();
+      const result = await callTool("dalfox", "do-dalfox", {
+        url: TARGETS.DVWA,
+      });
+      assertMatchesAny(result, ["xss", "parameter", "found", "vuln", "inject", "payload", "reflected", "dalfox"]);
+    });
+
+    it("returns error for empty URL", { timeout: 30000 }, async (t) => {
+      if (!(await isServiceHealthy("dalfox"))) { t.skip("dalfox not healthy"); return; }
+      const result = await callTool("dalfox", "do-dalfox", {
+        url: "",
+      });
+      assertIsError(result);
+    });
+  });
+
   describe("commix", () => {
     it("runs against DVWA and detects activity", { timeout: 120000 }, async (t) => {
       const skip = await shouldSkip(TestCategory.VULN_DVWA);

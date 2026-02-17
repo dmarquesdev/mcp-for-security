@@ -51,32 +51,28 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/** Host ports for non-MCP target containers (e2e profile) */
-const TARGET_PORTS: Record<string, number> = {
-  httpbin: Number(process.env.HTTPBIN_PORT || 8081),
-  dvwa: Number(process.env.DVWA_PORT || 8082),
-  wordpress: Number(process.env.WORDPRESS_PORT || 8083),
-  "scan-target": Number(process.env.SCAN_TARGET_PORT || 8084),
-  "tls-target": Number(process.env.TLS_TARGET_PORT || 8085),
-};
-
 const targetCache: Record<string, boolean> = {};
 
-/** Check if a non-MCP target container is reachable from the host */
+/** Check if a non-MCP target container is reachable from inside the Docker network (via gateway → e2e-reachability) */
 export async function isTargetReachable(target: string): Promise<boolean> {
   if (target in targetCache) return targetCache[target];
-  const port = TARGET_PORTS[target];
-  if (!port) return false;
   try {
-    const resp = await fetch(`http://localhost:${port}/`, {
-      signal: AbortSignal.timeout(5000),
+    const resp = await fetch(`${GATEWAY}/e2e-reachability/${encodeURIComponent(target)}`, {
+      signal: AbortSignal.timeout(10000),
+      headers: AUTH_HEADERS,
     });
-    // Any response (even 4xx from TLS targets getting plain HTTP) means it's up
-    targetCache[target] = true;
+    if (!resp.ok) {
+      // Don't cache negative results — let next test retry (service may still be starting)
+      return false;
+    }
+    const data = (await resp.json()) as { target?: string; reachable?: boolean };
+    const reachable = data.reachable === true;
+    if (reachable) targetCache[target] = true;
+    return reachable;
   } catch {
-    targetCache[target] = false;
+    // Don't cache negative results — let next test retry
+    return false;
   }
-  return targetCache[target];
 }
 
 /** Wait for a target container to become reachable */
@@ -103,6 +99,7 @@ export const ALL_SERVICES = [
   "cero",
   "commix",
   "crtsh",
+  "dalfox",
   "ffuf",
   "gau",
   "github-subdomains",

@@ -70,7 +70,7 @@ services:
     <<: *restart
 
   # ═══════════════════════════════════════════
-  # Go Tools (17)
+  # Go Tools (18)
   # ═══════════════════════════════════════════
 
   alterx:
@@ -138,6 +138,22 @@ services:
         GO_PACKAGE: github.com/glebarez/cero
         TOOL_BIN: cero
     command: ["/usr/local/bin/cero", "--transport", "http", "--port", "3000"]
+    expose: ["3000"]
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/healthz"]
+    networks: ["tools"]
+    <<: [*restart, *resource-limits, *security]
+
+  dalfox:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.go
+      args:
+        SERVER_DIR: servers/dalfox-mcp
+        GO_PACKAGE: github.com/hahwul/dalfox/v2
+        TOOL_BIN: dalfox
+    command: ["/usr/local/bin/dalfox", "--transport", "http", "--port", "3000"]
     expose: ["3000"]
     healthcheck:
       <<: *healthcheck
@@ -664,6 +680,19 @@ services:
   # ═══════════════════════════════════════════
   # E2E Test Targets
   # ═══════════════════════════════════════════
+
+  # Reachability checker: used by E2E tests to verify targets from inside the container network
+  e2e-reachability:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.e2e-reachability
+    expose: ["3000"]
+    profiles: ["e2e"]
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/healthz"]
+    networks: ["tools"]
+    <<: *restart
 
   scan-target:
     build:

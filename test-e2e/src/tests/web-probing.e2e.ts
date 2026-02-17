@@ -7,7 +7,6 @@ import {
   assertLinesAreUrls,
   assertMatchesAny,
   assertMatchesRegex,
-  getContentText,
 } from "../helpers/assertions.js";
 import { isServiceHealthy } from "../helpers/health.js";
 import { shouldSkip, TestCategory } from "../helpers/categories.js";
@@ -19,14 +18,10 @@ describe("web probing", () => {
       const skip = await shouldSkip(TestCategory.LOCAL);
       if (skip) { t.skip(skip); return; }
       if (!(await isServiceHealthy("httpx"))) { t.skip("httpx not healthy"); return; }
+      // httpx (ProjectDiscovery) rejects single-label hostnames — use port-qualified URL
       const result = await callTool("httpx", "do-httpx", {
-        target: [TARGETS.HTTPBIN],
+        target: [TARGETS.HTTPBIN_HOST],
       });
-      const text = getContentText(result);
-      if (/no output from httpx/i.test(text)) {
-        t.skip("httpx produced no output (httpbin may be unreachable)");
-        return;
-      }
       assertContains(result, "httpbin");
       assertMatchesRegex(result, /200|httpbin/i);
     });
@@ -46,15 +41,11 @@ describe("web probing", () => {
       const skip = await shouldSkip(TestCategory.LOCAL);
       if (skip) { t.skip(skip); return; }
       if (!(await isServiceHealthy("katana"))) { t.skip("katana not healthy"); return; }
+      // katana (ProjectDiscovery) rejects single-label hostnames — use port-qualified URL
       const result = await callTool("katana", "do-katana", {
-        target: [TARGETS.HTTPBIN],
+        target: [TARGETS.HTTPBIN_HOST],
         depth: 2,
       });
-      const text = getContentText(result);
-      if (/no output from katana/i.test(text)) {
-        t.skip("katana produced no output (httpbin may be unreachable)");
-        return;
-      }
       assertContains(result, "httpbin");
       assertLineCount(result, 1);
     });

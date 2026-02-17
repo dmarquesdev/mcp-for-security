@@ -27,7 +27,7 @@ async function sendReqCrtSh(query: string, options?: CrtShOptions): Promise<stri
     try {
         const signals: AbortSignal[] = [];
         if (options?.signal) signals.push(options.signal);
-        if (options?.timeoutMs) signals.push(AbortSignal.timeout(options.timeoutMs));
+        signals.push(AbortSignal.timeout(options?.timeoutMs ?? 120_000));
         const fetchOptions: RequestInit = signals.length > 0 ? { signal: AbortSignal.any(signals) } : {};
 
         const response = await fetch(`https://crt.sh/?q=${query}&output=json`, fetchOptions);

@@ -13,10 +13,13 @@ server.tool(
     "do-crtsh",
     "Discovers subdomains from SSL certificate logs",
     {
-        target: z.string().describe("Target domain to analyze (e.g., example.com)."),
+        target: z.string().min(1, "Target cannot be empty").describe("Target domain to analyze (e.g., example.com)."),
         ...TIMEOUT_SCHEMA,
     },
     async ({ target, timeoutSeconds }, extra) => {
+        if (!target || !target.trim()) {
+            throw new Error("Target domain is required and cannot be empty");
+        }
         const domains = await GetCrtSh(target, {
             signal: extra.signal,
             ...(timeoutSeconds && { timeoutMs: timeoutSeconds * 1000 }),

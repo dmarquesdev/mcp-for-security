@@ -31,9 +31,10 @@ server.tool(
         service_discovery: z.boolean().optional().describe("Discover services on open ports. Maps to -sD."),
         service_version: z.boolean().optional().describe("Detect service versions on open ports. Maps to -sV."),
         ping: z.boolean().optional().describe("Use ping probes for host discovery. Maps to -ping."),
+        resolvers: z.string().optional().describe("Custom DNS resolvers (comma-separated IPs, e.g., '127.0.0.11' for Docker internal DNS). Maps to -r."),
         ...TIMEOUT_SCHEMA,
     },
-    async ({ host, ports, top_ports, exclude_ports, scan_type, rate, retries, probe_timeout, warm_up_time, json, silent, interface_name, source_ip, exclude_cdn, display_cdn, service_discovery, service_version, ping, timeoutSeconds }, extra) => {
+    async ({ host, ports, top_ports, exclude_ports, scan_type, rate, retries, probe_timeout, warm_up_time, json, silent, interface_name, source_ip, exclude_cdn, display_cdn, service_discovery, service_version, ping, resolvers, timeoutSeconds }, extra) => {
         const naabuArgs: string[] = ["-host", host, "-no-stdin"];
 
         if (ports) naabuArgs.push("-p", ports);
@@ -53,6 +54,7 @@ server.tool(
         if (service_discovery) naabuArgs.push("-sD");
         if (service_version) naabuArgs.push("-sV");
         if (ping) naabuArgs.push("-ping");
+        if (resolvers) naabuArgs.push("-r", resolvers);
 
         const result = await secureSpawn(args[0], naabuArgs, buildSpawnOptions(extra, { timeoutSeconds }));
         return formatToolResult(result, { toolName: "naabu" });

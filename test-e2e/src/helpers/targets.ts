@@ -46,6 +46,8 @@ export const TARGETS = {
   TLS_TARGET_HOST: env("TLS_TARGET_HOST", `${tlsTarget}:443`),
   /** Local httpbin for fuzzer/injection tests */
   HTTPBIN: httpbin,
+  /** httpbin with explicit port — required for ProjectDiscovery tools (httpx, katana) that reject single-label hostnames */
+  HTTPBIN_HOST: env("HTTPBIN_HOST", "http://httpbin:80/"),
   /** httpbin /get endpoint (derived from HTTPBIN unless overridden) */
   HTTPBIN_GET: env("HTTPBIN_GET", `${httpbin}get`),
   /** httpbin FUZZ endpoint (derived from HTTPBIN unless overridden) */

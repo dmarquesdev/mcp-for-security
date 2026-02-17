@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "clean": "node -e \"require('fs').rmSync('build',{recursive:true,force:true})\"",
     "build": "tsc",
     "test": "node --test --test-concurrency=1 --test-timeout=120000 'build/tests/*.e2e.js'",
     "test:smoke": "node --test --test-timeout=60000 'build/tests/smoke.e2e.js'"

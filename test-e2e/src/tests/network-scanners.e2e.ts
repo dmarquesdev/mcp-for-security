@@ -60,10 +60,13 @@ describe("network scanners", () => {
       const skip = await shouldSkip(TestCategory.LOCAL_SCAN);
       if (skip) { t.skip(skip); return; }
       if (!(await isServiceHealthy("naabu"))) { t.skip("naabu not healthy"); return; }
+      // naabu (ProjectDiscovery) uses its own Go DNS resolver that can't resolve
+      // Docker single-label hostnames — pass Docker's internal DNS resolver
       const result = await callTool("naabu", "do-naabu", {
         host: TARGETS.SCAN_TARGET,
         top_ports: 100,
         scan_type: "c",
+        resolvers: "127.0.0.11",
       });
       assertContains(result, TARGETS.SCAN_TARGET);
       assertMatchesRegex(result, /:\d+/);

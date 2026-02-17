@@ -34,13 +34,21 @@ echo ""
 
 # Check e2e target containers
 echo "Checking e2e target containers..."
-for target_port in "httpbin:${HTTPBIN_PORT:-8081}" "dvwa:${DVWA_PORT:-8082}" "wordpress:${WORDPRESS_PORT:-8083}"; do
+for target_port in "httpbin:${HTTPBIN_PORT:-8081}" "dvwa:${DVWA_PORT:-8082}" "wordpress:${WORDPRESS_PORT:-8083}" "scan-target:${SCAN_TARGET_PORT:-8084}" "tls-target:${TLS_TARGET_PORT:-8085}"; do
   name="${target_port%%:*}"
   port="${target_port##*:}"
-  if curl -sf --max-time 3 "http://localhost:$port/" > /dev/null 2>&1; then
-    echo "  $name is reachable on port $port"
+  if [ "$name" = "tls-target" ]; then
+    if curl -sf -k --max-time 3 "https://localhost:$port/" > /dev/null 2>&1; then
+      echo "  $name is reachable on port $port"
+    else
+      echo "  WARN: $name not reachable (related tests will skip)"
+    fi
   else
-    echo "  WARN: $name not reachable (related tests will skip)"
+    if curl -sf --max-time 3 "http://localhost:$port/" > /dev/null 2>&1; then
+      echo "  $name is reachable on port $port"
+    else
+      echo "  WARN: $name not reachable (related tests will skip)"
+    fi
   fi
 done
 echo ""
@@ -49,7 +57,8 @@ echo ""
 echo "Checking service health..."
 HEALTHY=0
 TOTAL=0
-SERVICES=(alterx arjun assetfinder cero commix crtsh ffuf github-subdomains gobuster gowitness http-headers-security httpx katana masscan mobsf nmap nuclei scoutsuite shuffledns smuggler sqlmap sslscan subfinder testssl urldedupe waybackurls wpscan)
+# Keep in sync with test-e2e/src/helpers/health.ts ALL_SERVICES
+SERVICES=(alterx arjun asnmap assetfinder cero commix crtsh dalfox ffuf gau github-subdomains gobuster gowitness hakrawler http-headers-security httpx katana masscan naabu mobsf nmap nuclei scoutsuite shodan shuffledns smuggler sqlmap sslscan subfinder testssl urldedupe uro waybackurls wpscan)
 
 for svc in "${SERVICES[@]}"; do
   TOTAL=$((TOTAL + 1))
