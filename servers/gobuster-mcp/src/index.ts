@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { secureSpawn, startServer, getToolArgs, formatToolResult, TIMEOUT_SCHEMA, buildSpawnOptions } from "mcp-shared";
+import { secureSpawn, startServer, getToolArgs, formatToolResult, TIMEOUT_SCHEMA, buildSpawnOptions, registerSecListsTool } from "mcp-shared";
 import type { ToolContent } from "mcp-shared";
 
 const args = getToolArgs("gobuster-mcp <gobuster binary>");
@@ -21,7 +21,7 @@ server.tool(
     "Brute-force directories and files on a web server using gobuster dir mode",
     {
         url: z.string().describe("Target URL"),
-        wordlist: z.string().describe("Path to wordlist file"),
+        wordlist: z.string().describe("Path to wordlist file. SecLists available at /opt/seclists/ (e.g. /opt/seclists/Discovery/Web-Content/common.txt)"),
         extensions: z.string().optional().describe("File extensions to search for, e.g. 'php,html,txt'"),
         extensions_file: z.string().optional().describe("File containing extensions to search for"),
         status_codes: z.string().optional().describe("Positive status codes to match, e.g. '200,204,301'"),
@@ -88,7 +88,7 @@ server.tool(
     "Enumerate DNS subdomains using gobuster dns mode",
     {
         domain: z.string().describe("Target domain to enumerate subdomains for"),
-        wordlist: z.string().describe("Path to wordlist file"),
+        wordlist: z.string().describe("Path to wordlist file. SecLists available at /opt/seclists/ (e.g. /opt/seclists/Discovery/Web-Content/common.txt)"),
         resolver: z.string().optional().describe("Custom DNS resolver, e.g. '8.8.8.8'"),
         show_ips: z.boolean().optional().describe("Show IP addresses for discovered subdomains"),
         show_cname: z.boolean().optional().describe("Show CNAME records"),
@@ -119,7 +119,7 @@ server.tool(
     "Discover virtual hosts on a web server using gobuster vhost mode",
     {
         url: z.string().describe("Target URL"),
-        wordlist: z.string().describe("Path to wordlist file"),
+        wordlist: z.string().describe("Path to wordlist file. SecLists available at /opt/seclists/ (e.g. /opt/seclists/Discovery/Web-Content/common.txt)"),
         domain: z.string().optional().describe("Domain to append to wordlist entries"),
         append_domain: z.boolean().optional().describe("Append domain from base URL to wordlist entries"),
         method: z.string().optional().describe("HTTP method to use (default: GET)"),
@@ -172,7 +172,7 @@ server.tool(
     "Fuzz URLs using the FUZZ keyword with gobuster fuzz mode",
     {
         url: z.string().describe("Target URL containing FUZZ keyword"),
-        wordlist: z.string().describe("Path to wordlist file"),
+        wordlist: z.string().describe("Path to wordlist file. SecLists available at /opt/seclists/ (e.g. /opt/seclists/Discovery/Web-Content/common.txt)"),
         body: z.string().optional().describe("Request body (can contain FUZZ keyword)"),
         exclude_status_codes: z.string().optional().describe("Status codes to exclude, e.g. '404,403'"),
         method: z.string().optional().describe("HTTP method to use (default: GET)"),
@@ -224,7 +224,7 @@ server.tool(
     "do-gobuster-s3",
     "Enumerate AWS S3 buckets using gobuster s3 mode",
     {
-        wordlist: z.string().describe("Path to wordlist file"),
+        wordlist: z.string().describe("Path to wordlist file. SecLists available at /opt/seclists/ (e.g. /opt/seclists/Discovery/Web-Content/common.txt)"),
         maxfiles: z.number().optional().describe("Max files to list when listing buckets (default: 5)"),
         useragent: z.string().optional().describe("User agent string"),
         random_agent: z.boolean().optional().describe("Use a random user agent"),
@@ -257,7 +257,7 @@ server.tool(
     "do-gobuster-gcs",
     "Enumerate Google Cloud Storage buckets using gobuster gcs mode",
     {
-        wordlist: z.string().describe("Path to wordlist file"),
+        wordlist: z.string().describe("Path to wordlist file. SecLists available at /opt/seclists/ (e.g. /opt/seclists/Discovery/Web-Content/common.txt)"),
         maxfiles: z.number().optional().describe("Max files to list when listing buckets (default: 5)"),
         useragent: z.string().optional().describe("User agent string"),
         random_agent: z.boolean().optional().describe("Use a random user agent"),
@@ -291,7 +291,7 @@ server.tool(
     "Enumerate TFTP servers using gobuster tftp mode",
     {
         server: z.string().describe("Target TFTP server address"),
-        wordlist: z.string().describe("Path to wordlist file"),
+        wordlist: z.string().describe("Path to wordlist file. SecLists available at /opt/seclists/ (e.g. /opt/seclists/Discovery/Web-Content/common.txt)"),
         timeout: z.string().optional().describe("TFTP timeout, e.g. '10s'"),
         threads: z.number().optional().describe("Number of concurrent threads"),
         ...TIMEOUT_SCHEMA,
@@ -305,6 +305,8 @@ server.tool(
         return runGobuster("tftp", gobusterArgs, extra, timeoutSeconds);
     },
 );
+
+registerSecListsTool(server);
 
 async function main() {
     await startServer(server);

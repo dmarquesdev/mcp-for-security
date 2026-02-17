@@ -1,0 +1,15 @@
+# --- SecLists volume provider ---
+# Builds a minimal image containing only the SecLists wordlist collection.
+# Used as a one-shot init container to populate a shared named volume
+# that wordlist-consuming tools (ffuf, gobuster, shuffledns, arjun) mount read-only.
+FROM debian:bookworm-slim AS builder
+ARG SECLISTS_VERSION=2025.3
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates git \
+    && git clone --depth 1 --branch ${SECLISTS_VERSION} \
+       https://github.com/danielmiessler/SecLists.git /opt/seclists \
+    && rm -rf /opt/seclists/.git \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+FROM debian:bookworm-slim
+COPY --from=builder /opt/seclists /opt/seclists
+ENTRYPOINT ["sh", "-c", "if [ -d /data/Discovery ]; then echo 'SecLists already populated'; else cp -a /opt/seclists/. /data/; echo 'SecLists copied to volume'; fi"]

@@ -25,6 +25,9 @@ x-security: &security
   security_opt:
     - no-new-privileges:true
 
+volumes:
+  seclists-data:
+
 networks:
   gateway:
     driver: bridge
@@ -42,6 +45,15 @@ services:
       dockerfile: docker/Dockerfile.shared
     image: mcp-shared-builder:latest
     profiles: ["build-only"]
+
+  # ─── SecLists Volume Provider (one-shot init) ───
+  seclists-init:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.seclists-data
+    volumes:
+      - seclists-data:/data
+    restart: "no"
 
   # ─── Gateway ───
   gateway:
@@ -144,7 +156,11 @@ services:
     command: ["/usr/local/bin/ffuf", "--transport", "http", "--port", "3000"]
     expose: ["3000"]
     volumes:
+      - seclists-data:/opt/seclists:ro
       - ./docker/e2e-wordlists:/wordlists:ro
+    depends_on:
+      seclists-init:
+        condition: service_completed_successfully
     healthcheck:
       <<: *healthcheck
       test: ["CMD", "curl", "-sf", "http://localhost:3000/healthz"]
@@ -197,7 +213,11 @@ services:
     command: ["/usr/local/bin/gobuster", "--transport", "http", "--port", "3000"]
     expose: ["3000"]
     volumes:
+      - seclists-data:/opt/seclists:ro
       - ./docker/e2e-wordlists:/wordlists:ro
+    depends_on:
+      seclists-init:
+        condition: service_completed_successfully
     healthcheck:
       <<: *healthcheck
       test: ["CMD", "curl", "-sf", "http://localhost:3000/healthz"]
@@ -345,7 +365,11 @@ services:
     command: ["/usr/local/bin/shuffledns", "/usr/local/bin/massdns", "--transport", "http", "--port", "3000"]
     expose: ["3000"]
     volumes:
+      - seclists-data:/opt/seclists:ro
       - ./docker/e2e-wordlists:/wordlists:ro
+    depends_on:
+      seclists-init:
+        condition: service_completed_successfully
     healthcheck:
       <<: *healthcheck
       test: ["CMD", "curl", "-sf", "http://localhost:3000/healthz"]
@@ -418,6 +442,11 @@ services:
         PIP_PACKAGE: arjun
     command: ["/opt/venv/bin/arjun", "--transport", "http", "--port", "3000"]
     expose: ["3000"]
+    volumes:
+      - seclists-data:/opt/seclists:ro
+    depends_on:
+      seclists-init:
+        condition: service_completed_successfully
     healthcheck:
       <<: *healthcheck
       test: ["CMD", "curl", "-sf", "http://localhost:3000/healthz"]
@@ -545,22 +574,6 @@ services:
       context: .
       dockerfile: docker/Dockerfile.urldedupe
     command: ["/usr/local/bin/urldedupe", "--transport", "http", "--port", "3000"]
-    expose: ["3000"]
-    healthcheck:
-      <<: *healthcheck
-      test: ["CMD", "curl", "-sf", "http://localhost:3000/healthz"]
-    networks: ["tools"]
-    <<: [*restart, *resource-limits, *security]
-
-  # ═══════════════════════════════════════════
-  # SecLists (1)
-  # ═══════════════════════════════════════════
-
-  seclists:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.seclists
-    command: ["/opt/seclists", "--transport", "http", "--port", "3000"]
     expose: ["3000"]
     healthcheck:
       <<: *healthcheck

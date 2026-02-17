@@ -34,7 +34,7 @@ Every `src/index.ts` follows this exact sequence:
 
 API-based tools (crtsh, http-headers-security, mobsf) use HTTP/axios instead of `secureSpawn` but still pass `extra.signal` and timeout.
 
-All imports from `mcp-shared`: `{ secureSpawn, startServer, getToolArgs, formatToolResult, TIMEOUT_SCHEMA, buildSpawnOptions, sanitizePath, removeAnsiCodes, getEnvOrArg }`
+All imports from `mcp-shared`: `{ secureSpawn, startServer, getToolArgs, formatToolResult, TIMEOUT_SCHEMA, buildSpawnOptions, sanitizePath, removeAnsiCodes, getEnvOrArg, registerSecListsTool }`
 
 ## Conventions
 
@@ -53,6 +53,7 @@ All imports from `mcp-shared`: `{ secureSpawn, startServer, getToolArgs, formatT
 - **Docker build order:** Build `mcp-shared-builder:latest` first — `./scripts/docker-build.sh` handles this
 - **Docker retry loops:** `for i in 1 2 3 4 5; do ... && break || sleep 15; done` is intentional for CI/CD resilience
 - **E2E targets:** Import `TARGETS`/`WORDLISTS` from `test-e2e/src/helpers/targets.ts` — overridable via `E2E_TARGET_*` env vars
+- **SecLists:** Shared Docker volume at `/opt/seclists/` (read-only) — populated by `seclists-init` service. Wordlist-consuming servers call `registerSecListsTool(server)` from mcp-shared to expose `do-list-wordlists`
 
 ## Don'ts
 

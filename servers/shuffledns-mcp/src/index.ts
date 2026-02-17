@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { secureSpawn, startServer, getToolArgs, formatToolResult, TIMEOUT_SCHEMA, buildSpawnOptions } from "mcp-shared";
+import { secureSpawn, startServer, getToolArgs, formatToolResult, TIMEOUT_SCHEMA, buildSpawnOptions, registerSecListsTool } from "mcp-shared";
 
 const args = getToolArgs("shuffledns-mcp <shuffledns binary> <massdns binary>", 2);
 
@@ -16,7 +16,7 @@ server.tool(
         target: z.string().describe("Target domain (e.g., example.com)"),
         resolver: z.string().describe("Resolver file path"),
         mode: z.enum(["bruteforce", "resolve", "filter"]).describe("Operation mode"),
-        wordlist: z.string().describe("Wordlist file path"),
+        wordlist: z.string().describe("Wordlist file path. SecLists available at /opt/seclists/ (e.g. /opt/seclists/Discovery/DNS/subdomains-top1million-5000.txt)"),
         rateLimit: z.number().optional().describe("Rate limit for requests"),
         ...TIMEOUT_SCHEMA,
     },
@@ -28,6 +28,8 @@ server.tool(
         return formatToolResult(result, { toolName: "shuffledns" });
     },
 );
+
+registerSecListsTool(server);
 
 async function main() {
     await startServer(server);

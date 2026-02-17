@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { secureSpawn, startServer, getToolArgs, formatToolResult, TIMEOUT_SCHEMA, buildSpawnOptions } from "mcp-shared";
+import { secureSpawn, startServer, getToolArgs, formatToolResult, TIMEOUT_SCHEMA, buildSpawnOptions, registerSecListsTool } from "mcp-shared";
 
 const args = getToolArgs("arjun-mcp <arjun binary or python3 arjun>");
 
@@ -15,7 +15,7 @@ server.tool(
     {
         url: z.string().url().describe("Target URL to scan for hidden parameters"),
         textFile: z.string().optional().describe("Path to file containing multiple URLs"),
-        wordlist: z.string().optional().describe("Path to custom wordlist file"),
+        wordlist: z.string().optional().describe("Path to custom wordlist file. SecLists available at /opt/seclists/ (e.g. /opt/seclists/Discovery/Web-Content/burp-parameter-names.txt)"),
         method: z.enum(["GET", "POST", "JSON", "HEADERS"]).optional().describe("HTTP method to use (default: GET)"),
         rateLimit: z.number().optional().describe("Maximum requests per second (default: 9999)"),
         chunkSize: z.number().optional().describe("Chunk size - number of parameters to send at once"),
@@ -35,6 +35,8 @@ server.tool(
         return formatToolResult(result, { toolName: "arjun", stripAnsi: true });
     },
 );
+
+registerSecListsTool(server);
 
 async function main() {
     await startServer(server);

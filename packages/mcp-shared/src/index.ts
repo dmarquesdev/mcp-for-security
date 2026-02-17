@@ -7,3 +7,4 @@ export { getEnvOrArg } from "./env.js";
 export { getToolArgs } from "./args.js";
 export { formatToolResult, type FormatResultOptions, type ToolContent } from "./result.js";
 export { TIMEOUT_SCHEMA, buildSpawnOptions } from "./timeout.js";
+export { registerSecListsTool } from "./seclists.js";

@@ -9,7 +9,7 @@
 
 ## 🚀 Project Overview
 
-**MCP for Security** repository contains 30 Model Context Protocol (MCP) server implementations for various security testing tools, making them accessible through a standardized interface. All servers live in `servers/` and share a common utility library (`packages/mcp-shared/`). The repo uses npm workspaces and supports both stdio and HTTP transport.
+**MCP for Security** repository contains 32 Model Context Protocol (MCP) server implementations for various security testing tools, making them accessible through a standardized interface. All servers live in `servers/` and share a common utility library (`packages/mcp-shared/`). The repo uses npm workspaces and supports both stdio and HTTP transport.
 
 ---
 
@@ -68,7 +68,6 @@ Since each MCP server may require different dependencies, the `start.sh` bash sc
 | Nuclei | Vulnerability scanner using custom templates | [Nuclei MCP Documentation](./servers/nuclei-mcp/) |
 | Scout Suite | Cloud security auditing tool for assessing configurations across multiple services | [Scout Suite MCP Documentation](./servers/scoutsuite-mcp/) |
 | Shodan | Shodan search engine API for security reconnaissance | [Shodan MCP Documentation](./servers/shodan-mcp/) |
-| SecLists | Security tester's wordlist collection — browse, search, and retrieve wordlists for use with other tools | [SecLists MCP Documentation](./servers/seclists-mcp/) |
 | shuffledns | High-speed and customizable DNS brute-forcing and resolution tool | [shuffledns MCP Documentation](./servers/shuffledns-mcp/) |
 | Smuggler | Advanced tool for detecting HTTP Request Smuggling vulnerabilities | [Smuggler MCP Documentation](./servers/smuggler-mcp/) |
 | SQLmap | Advanced SQL injection detection and exploitation tool | [SQLmap MCP Documentation](./servers/sqlmap-mcp/) |
@@ -156,9 +155,6 @@ SSL/TLS configuration analyzer for identifying weak ciphers and security misconf
 ### testssl MCP Server
 Comprehensive TLS/SSL testing tool that checks protocols (SSLv2–TLS 1.3), cipher suites, vulnerabilities (Heartbleed, POODLE, DROWN, FREAK, and more), server defaults, certificates, and HTTP security headers. Supports targeted scans, batch scanning, and multiple output formats.
 
-### SecLists MCP
-Provides access to the SecLists wordlist collection — browse categories, search for wordlists by name, retrieve file paths for use with tools like ffuf and gobuster, and read wordlist contents directly.
-
 ### urldedupe MCP
 URL deduplication tool that removes redundant URL and query parameter combinations. Accepts URLs via stdin, supports regex parsing, similar URL filtering, query-string-only mode, and extension filtering.
 
@@ -183,6 +179,11 @@ All servers depend on a shared utility library that provides:
 - **`getEnvOrArg()`** — Credential helper that prefers environment variables over CLI arguments
 - **`TIMEOUT_SCHEMA`** / **`buildSpawnOptions()`** — Client-configurable execution timeout schema (Zod field to spread into tool schemas) and option builder that converts `timeoutSeconds` + `extra.signal` into `SpawnOptions`
 - **`loadenv`** — Centralized `.env` credential loading (auto-imported by `mcp-shared`). Set `MCP_ENV_FILE` for explicit path when CWD differs from repo root.
+- **`registerSecListsTool(server, basePath?)`** — Registers a lightweight `do-list-wordlists` tool for browsing and searching the SecLists wordlist collection. Used by wordlist-consuming servers (ffuf, gobuster, shuffledns, arjun).
+
+### SecLists (Shared Volume)
+
+The [SecLists](https://github.com/danielmiessler/SecLists) wordlist collection is available as a shared Docker volume mounted at `/opt/seclists/` (read-only) on all wordlist-consuming containers (ffuf, gobuster, shuffledns, arjun). A one-shot `seclists-init` service populates the named volume on first startup. Servers that include `registerSecListsTool()` also expose a `do-list-wordlists` tool so agents can browse and search available wordlists without a dedicated MCP server.
 
 ### Standard Server Pattern
 
