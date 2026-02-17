@@ -581,6 +581,21 @@ services:
     networks: ["tools"]
     <<: [*restart, *resource-limits, *security]
 
+  uro:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.python-pip
+      args:
+        SERVER_DIR: servers/uro-mcp
+        PIP_PACKAGE: uro
+    command: ["/opt/venv/bin/uro", "--transport", "http", "--port", "3000"]
+    expose: ["3000"]
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/healthz"]
+    networks: ["tools"]
+    <<: [*restart, *resource-limits, *security]
+
   # ═══════════════════════════════════════════
   # API-Only Tools (4)
   # ═══════════════════════════════════════════

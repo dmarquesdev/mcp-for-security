@@ -73,4 +73,20 @@ describe("web probing", () => {
       assertContains(result, TARGETS.EXAMPLE);
     });
   });
+
+  describe("uro", () => {
+    it("deduplicates sample URLs", { timeout: 60000 }, async (t) => {
+      const skip = await shouldSkip(TestCategory.SELF_CONTAINED);
+      if (skip) { t.skip(skip); return; }
+      if (!(await isServiceHealthy("uro"))) { t.skip("uro not healthy"); return; }
+      const urls = [
+        `${TARGETS.EXAMPLE_HTTPS}/page?id=1`,
+        `${TARGETS.EXAMPLE_HTTPS}/page?id=2`,
+        `${TARGETS.EXAMPLE_HTTPS}/other?id=1`,
+        `${TARGETS.EXAMPLE_HTTPS}/page?id=3`,
+      ];
+      const result = await callTool("uro", "do-uro", { urls });
+      assertContains(result, TARGETS.EXAMPLE);
+    });
+  });
 });
